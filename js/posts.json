@@ -2,8 +2,6 @@
   {
     "id": "build-personal-blog",
     "title": "从零搭建个人博客：技术选型与实现",
-    "emoji": "🛠️",
-    "cover": "ocean",
     "category": "技术",
     "tags": [
       "前端",
@@ -11,8 +9,10 @@
       "JavaScript"
     ],
     "date": "2026-07-18",
-    "excerpt": "不依赖任何框架，用纯 HTML/CSS/JS 搭一个能直接部署的个人博客。本文记录了从设计到上线的完整思路。",
-    "content": "## 为什么选择纯静态方案\n\n市面上的博客框架很多——Hexo、Hugo、Jekyll、WordPress……但我最终选择用**最朴素的方式**手写一个。原因很简单：\n\n- 完全掌控设计与代码，不被模板束缚\n- 零构建步骤，打开即用，部署即上线\n- 没有依赖地狱，十年后依然能跑\n\n> 最好的工具，是你完全理解它如何工作的工具。\n\n## 核心技术栈\n\n整套博客只用了三样东西：\n\n1. **HTML** —— 页面骨架\n2. **CSS** —— 视觉与排版\n3. **JavaScript** —— 路由与 Markdown 渲染\n\nMarkdown 渲染借助 `marked.js`（通过 CDN 引入），仅此而已。\n\n## 路由怎么实现\n\n没有 React Router，没有 Vue Router，就用最原始的 **hash 路由**：\n\n```javascript\nwindow.addEventListener('hashchange', router);\n\nfunction router() {\n  const hash = location.hash.slice(1) || '/';\n  // 根据 hash 渲染对应页面\n  if (hash === '/') renderHome();\n  else if (hash === '/tags') renderTags();\n  else if (hash === '/about') renderAbout();\n  else if (hash.startsWith('/post/')) renderPost(hash.slice(6));\n}\n```\n\n简单、可靠、无刷新。浏览器前进后退都正常工作。\n\n## 文章数据如何组织\n\n我把所有文章存在一个 JS 数组里，每篇包含元信息和 Markdown 正文：\n\n```javascript\nconst ARTICLES = [\n  {\n    id: \"my-post\",\n    title: \"文章标题\",\n    category: \"技术\",\n    tags: [\"前端\", \"CSS\"],\n    date: \"2026-07-18\",\n    excerpt: \"摘要……\",\n    content: \"## 这里是 Markdown 正文\"\n  }\n];\n```\n\n渲染时用 `marked.parse()` 把正文转成 HTML。新增文章只需往数组里加一项。\n\n## 部署到哪里\n\n因为是纯静态文件，部署选择极其自由：\n\n| 平台 | 特点 | 适合 |\n| --- | --- | --- |\n| GitHub Pages | 免费、绑定仓库 | 开发者 |\n| Netlify | 拖拽上传、自动 HTTPS | 快速上线 |\n| Vercel | 边缘网络、速度极快 | 追求性能 |\n| 任意虚拟主机 | 传统但稳妥 | 已有服务器 |\n\n我推荐 **Netlify**：把文件夹拖进去，30 秒拿到一个带 HTTPS 的网址。\n\n## 一些设计取舍\n\n- **字体**：正文用衬线体 `Noto Serif SC`，阅读更舒适；UI 用无衬线 `Inter`，清晰利落。\n- **配色**：暖色调米白底 + 砖红强调色，避开了千篇一律的蓝紫。\n- **代码块**：深色背景，与浅色正文形成节奏对比。\n\n## 写在最后\n\n这个博客本身就是一个活生生的例子——你正在看的页面就是它。代码不多，但每一行都是我亲手敲下的。\n\n**技术不该是炫技，而是恰好够用。**"
+    "excerpt": "为什么选择纯静态方案 市面上的博客框架很多——Hexo、Hugo、Jekyll、WordPress……但我最终选择用最朴素的方式手写一个。原因很简单：  完全掌…",
+    "content": "## 为什么选择纯静态方案\n\n市面上的博客框架很多——Hexo、Hugo、Jekyll、WordPress……但我最终选择用**最朴素的方式**手写一个。原因很简单：\n\n- 完全掌控设计与代码，不被模板束缚\n- 零构建步骤，打开即用，部署即上线\n- 没有依赖地狱，十年后依然能跑\n\n> 最好的工具，是你完全理解它如何工作的工具。\n\n## 核心技术栈\n\n整套博客只用了三样东西：\n\n1. **HTML** —— 页面骨架\n2. **CSS** —— 视觉与排版\n3. **JavaScript** —— 路由与 Markdown 渲染\n\nMarkdown 渲染借助 `marked.js`（通过 CDN 引入），仅此而已。\n\n## 路由怎么实现\n\n没有 React Router，没有 Vue Router，就用最原始的 **hash 路由**：\n\n```javascript\nwindow.addEventListener('hashchange', router);\n\nfunction router() {\n  const hash = location.hash.slice(1) || '/';\n  // 根据 hash 渲染对应页面\n  if (hash === '/') renderHome();\n  else if (hash === '/tags') renderTags();\n  else if (hash === '/about') renderAbout();\n  else if (hash.startsWith('/post/')) renderPost(hash.slice(6));\n}\n```\n\n简单、可靠、无刷新。浏览器前进后退都正常工作。\n\n## 文章数据如何组织\n\n我把所有文章存在一个 JS 数组里，每篇包含元信息和 Markdown 正文：\n\n```javascript\nconst ARTICLES = [\n  {\n    id: \"my-post\",\n    title: \"文章标题\",\n    category: \"技术\",\n    tags: [\"前端\", \"CSS\"],\n    date: \"2026-07-18\",\n    excerpt: \"摘要……\",\n    content: \"## 这里是 Markdown 正文\"\n  }\n];\n```\n\n渲染时用 `marked.parse()` 把正文转成 HTML。新增文章只需往数组里加一项。\n\n## 部署到哪里\n\n因为是纯静态文件，部署选择极其自由：\n\n| 平台 | 特点 | 适合 |\n| --- | --- | --- |\n| GitHub Pages | 免费、绑定仓库 | 开发者 |\n| Netlify | 拖拽上传、自动 HTTPS | 快速上线 |\n| Vercel | 边缘网络、速度极快 | 追求性能 |\n| 任意虚拟主机 | 传统但稳妥 | 已有服务器 |\n\n我推荐 **Netlify**：把文件夹拖进去，30 秒拿到一个带 HTTPS 的网址。\n\n## 一些设计取舍\n\n- **字体**：正文用衬线体 `Noto Serif SC`，阅读更舒适；UI 用无衬线 `Inter`，清晰利落。\n- **配色**：暖色调米白底 + 砖红强调色，避开了千篇一律的蓝紫。\n- **代码块**：深色背景，与浅色正文形成节奏对比。\n\n## 写在最后\n\n这个博客本身就是一个活生生的例子——你正在看的页面就是它。代码不多，但每一行都是我亲手敲下的。\n\n**技术不该是炫技，而是恰好够用。**",
+    "emoji": "🛠️",
+    "cover": "ocean"
   },
   {
     "id": "async-await-guide",
