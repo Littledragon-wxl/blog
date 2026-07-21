@@ -825,6 +825,56 @@ ul, ol { padding-left: 1.4em; }
 .ed-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .ed-btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
+/* ====== 管理员登录页 ====== */
+.main-nav a.nav-admin { color: var(--text-soft); font-size: .9rem; }
+.main-nav a.nav-admin:hover { color: var(--accent); }
+.admin-page { max-width: 520px; margin: 0 auto; padding-top: 20px; }
+.admin-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 36px;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+.admin-icon { font-size: 3rem; margin-bottom: 16px; }
+.admin-card h2 { font-family: var(--serif); font-size: 1.6rem; margin-bottom: 10px; }
+.admin-user { color: var(--accent); font-weight: 600; margin-bottom: 14px; }
+.admin-tip { color: var(--text-soft); font-size: .92rem; line-height: 1.7; margin-bottom: 24px; }
+.admin-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+.admin-actions .ed-btn { font-size: .9rem; padding: 9px 20px; }
+.admin-actions button.ed-btn { cursor: pointer; }
+.admin-warn {
+  font-size: .82rem;
+  color: var(--text-mute);
+  background: var(--bg-soft);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  text-align: left;
+  line-height: 1.7;
+}
+.admin-warn strong { color: var(--accent); }
+.login-form { display: flex; flex-direction: column; gap: 12px; text-align: left; margin-bottom: 20px; }
+.login-form label { font-size: .85rem; color: var(--text-soft); font-weight: 500; }
+.login-form input {
+  font-family: var(--mono);
+  font-size: .92rem;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+}
+.login-form input:focus { border-color: var(--accent); }
+.login-form .ed-btn { margin-top: 6px; }
+.login-help { font-size: .85rem; color: var(--text-soft); text-align: left; background: var(--bg-soft); border-radius: var(--radius-sm); padding: 14px 16px; }
+.login-help summary { cursor: pointer; font-weight: 500; color: var(--text); }
+.login-help ol { margin: 10px 0 8px; padding-left: 1.4em; line-height: 1.8; }
+.login-help code { font-family: var(--mono); background: var(--bg-card); padding: 1px 6px; border-radius: 4px; font-size: .85em; }
+.login-help p { margin-top: 8px; color: var(--text-mute); }
+
 /* ====== 空状态(保留) ====== */
 
 /* ====== 回到顶部 ====== */

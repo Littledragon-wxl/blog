@@ -13,6 +13,9 @@
     marked.setOptions({ breaks: true, gfm: true });
   }
 
+  // 文章数据（运行时从 data/articles.json 加载）
+  let ARTICLES = [];
+
   // ====== 工具函数 ======
   function readingTime(markdown) {
     // 中文按字数，英文按词，粗略估算
@@ -53,45 +56,87 @@
     return getAllArticles().find(a => a.id === id);
   }
 
-  // ====== 用户文章存储（localStorage）======
-  const USER_KEY = 'blog-user-articles';
-
-  function getUserArticles() {
-    try { return JSON.parse(localStorage.getItem(USER_KEY) || '[]'); }
-    catch (e) { return []; }
-  }
-
-  function saveUserArticles(list) {
-    try { localStorage.setItem(USER_KEY, JSON.stringify(list)); } catch (e) {}
-  }
-
-  // 合并：内置文章 + 用户文章（用户文章按 id 覆盖内置，新 id 追加）
   function getAllArticles() {
-    const user = getUserArticles();
-    const userMap = {};
-    user.forEach(u => { userMap[u.id] = u; });
-    // 内置文章：若用户有同 id 覆盖则用用户的，否则用内置
-    const merged = ARTICLES.map(a => userMap[a.id] ? Object.assign({}, a, userMap[a.id], { userOwned: true }) : a);
-    // 用户新建的文章（不在内置列表里）
-    const builtinIds = ARTICLES.map(a => a.id);
-    user.filter(u => !builtinIds.includes(u.id)).forEach(u => merged.push(Object.assign({ userOwned: true }, u)));
-    // 按日期倒序
-    return merged.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return ARTICLES.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 
-  function saveArticle(article) {
-    const list = getUserArticles();
+  // ====== 管理员权限（GitHub Token，存 sessionStorage，关浏览器即清空）======
+  const ADMIN_TOKEN_KEY = 'blog-admin-token';
+  const ADMIN_USER_KEY = 'blog-admin-user';
+
+  function isAdmin() {
+    try { return !!sessionStorage.getItem(ADMIN_TOKEN_KEY); } catch (e) { return false; }
+  }
+  function getAdminToken() {
+    try { return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; } catch (e) { return ''; }
+  }
+  function getAdminUser() {
+    try { return sessionStorage.getItem(ADMIN_USER_KEY) || ''; } catch (e) { return ''; }
+  }
+  function adminLogout() {
+    try { sessionStorage.removeItem(ADMIN_TOKEN_KEY); sessionStorage.removeItem(ADMIN_USER_KEY); } catch (e) {}
+  }
+
+  // 验证 token（调 GitHub API 看是否有效，返回用户名或 null）
+  async function validateToken(token) {
+    try {
+      const r = await fetch('https://api.github.com/user', {
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
+      });
+      if (!r.ok) return null;
+      const d = await r.json();
+      return d.login;
+    } catch (e) { return null; }
+  }
+
+  // ====== GitHub 发布（提交 data/articles.json 到仓库，触发自动部署）======
+  function b64encode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  async function githubGetFile() {
+    const token = getAdminToken();
+    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + CONFIG.dataPath + '?ref=' + CONFIG.branch;
+    const r = await fetch(url, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!r.ok) throw new Error('获取文件失败: ' + r.status);
+    return r.json();
+  }
+
+  async function githubCommitFile(content, sha, message) {
+    const token = getAdminToken();
+    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + CONFIG.dataPath;
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message, content: b64encode(content), sha: sha, branch: CONFIG.branch })
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error('提交失败: ' + r.status + ' ' + (e.message || ''));
+    }
+    return r.json();
+  }
+
+  // 发布文章（新增或更新）—— 提交到 GitHub
+  async function publishArticle(article) {
+    const file = await githubGetFile();
+    let list = ARTICLES.slice();
     const idx = list.findIndex(a => a.id === article.id);
-    if (idx >= 0) list[idx] = article; else list.unshift(article);
-    saveUserArticles(list);
+    const isUpdate = idx >= 0;
+    if (isUpdate) list[idx] = article; else list.unshift(article);
+    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, (isUpdate ? '更新文章: ' : '发布新文章: ') + article.title);
+    if (isUpdate) ARTICLES[idx] = article; else ARTICLES.unshift(article);
   }
 
-  function deleteUserArticle(id) {
-    saveUserArticles(getUserArticles().filter(a => a.id !== id));
-  }
-
-  function isUserOwned(id) {
-    return getUserArticles().some(a => a.id === id);
+  // 删除文章 —— 提交到 GitHub
+  async function deleteArticlePub(id) {
+    const file = await githubGetFile();
+    const target = ARTICLES.find(a => a.id === id);
+    const list = ARTICLES.filter(a => a.id !== id);
+    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, '删除文章: ' + (target ? target.title : id));
+    ARTICLES = list;
   }
 
   function getAllTags() {
@@ -146,7 +191,6 @@
       <a class="post-card fade-in" href="#/post/${a.id}">
         <div class="pc-meta">
           <span class="pc-cat">${a.category}</span>
-          ${a.userOwned ? '<span class="pc-mine">✍️ 我的</span>' : ''}
           <span class="dot"></span>
           <span>${shortDate(a.date)}</span>
           <span class="dot"></span>
@@ -167,7 +211,6 @@
       <a class="xhs-card fade-in" href="#/post/${a.id}">
         <div class="xhs-cover" style="background:${grad}">
           <span class="cover-cat">${a.category}</span>
-          ${a.userOwned ? '<span class="cover-mine">✍️ 我的</span>' : ''}
           <span class="cover-emoji">${a.emoji || '📄'}</span>
           <span class="cover-read">${readingTime(a.content)} 分钟</span>
         </div>
@@ -232,7 +275,7 @@
 
     const html = marked.parse(a.content);
     const related = getAllArticles().filter(x => x.id !== id && x.tags.some(t => a.tags.includes(t))).slice(0, 2);
-    const owned = a.userOwned;
+    const admin = isAdmin();
 
     app.innerHTML = `
       <div class="container">
@@ -242,15 +285,15 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
               返回文章列表
             </a>
-            ${owned ? `<div class="article-actions">
+            ${admin ? `<div class="article-actions">
               <a href="#/edit/${a.id}" class="action-btn edit-btn">✏️ 编辑</a>
               <button class="action-btn del-btn" id="delBtn">🗑 删除</button>
-            </div>` : `<a href="#/write" class="write-cta">✍️ 我也写一篇</a>`}
+            </div>` : `<a href="#/admin" class="write-cta">🔐 作者登录</a>`}
           </div>
           <header class="article-header">
             <div class="ac-meta">
               <span class="ac-cat">${a.category}</span>
-              ${owned ? '<span class="ac-mine">✍️ 我的文章</span>' : ''}
+              ${admin ? '<span class="ac-mine">✍️ 已登录</span>' : ''}
               <span>·</span>
               <span>${formatDate(a.date)}</span>
               <span>·</span>
@@ -268,13 +311,21 @@
         ${related.length ? renderRelated(related) : ''}
       </div>`;
 
-    // 删除按钮
+    // 删除按钮（提交到 GitHub）
     const delBtn = document.getElementById('delBtn');
     if (delBtn) {
-      delBtn.addEventListener('click', () => {
-        if (confirm('确定删除这篇文章吗？此操作不可恢复。')) {
-          deleteUserArticle(a.id);
+      delBtn.addEventListener('click', async () => {
+        if (!confirm('确定删除这篇文章吗？\n这将提交到 GitHub 并重新部署，所有访客都会看到删除结果。')) return;
+        delBtn.disabled = true;
+        delBtn.textContent = '⏳ 删除中…';
+        try {
+          await deleteArticlePub(a.id);
+          alert('✅ 已删除，约 1 分钟后线上更新。');
           location.hash = '#/';
+        } catch (err) {
+          alert('删除失败：' + err.message);
+          delBtn.disabled = false;
+          delBtn.textContent = '🗑 删除';
         }
       });
     }
@@ -478,8 +529,13 @@
       }
     });
 
-    // 保存
-    document.getElementById('edSave').addEventListener('click', () => {
+    // 保存（提交到 GitHub 发布）
+    document.getElementById('edSave').addEventListener('click', async () => {
+      if (!isAdmin()) {
+        alert('需要先登录作者账号才能发布。\n即将跳转到登录页。');
+        location.hash = '#/admin';
+        return;
+      }
       const title = titleEl.value.trim();
       const content = ta.value.trim();
       if (!title) { titleEl.focus(); alert('请填写标题'); return; }
@@ -499,10 +555,102 @@
         emoji: currentEmoji,
         cover: cover
       };
-      saveArticle(article);
-      try { localStorage.removeItem(draftKey); } catch (e) {}
-      statusEl.textContent = '✅ 已保存！正在跳转……';
-      setTimeout(() => { location.hash = '#/post/' + article.id; }, 500);
+      const saveBtn = document.getElementById('edSave');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '⏳ 发布中…';
+      statusEl.textContent = '正在提交到 GitHub…';
+      try {
+        await publishArticle(article);
+        try { localStorage.removeItem(draftKey); } catch (e) {}
+        statusEl.textContent = '✅ 已发布！约 1 分钟后线上更新。';
+        setTimeout(() => { location.hash = '#/post/' + article.id; }, 800);
+      } catch (err) {
+        statusEl.textContent = '❌ 发布失败：' + err.message;
+        saveBtn.disabled = false;
+        saveBtn.textContent = editing ? '保存修改' : '发布文章';
+        alert('发布失败：' + err.message + '\n\n请检查：\n1. Token 是否有效且有 repo 权限\n2. 网络是否正常');
+      }
+    });
+  }
+
+  // ====== 渲染：管理员登录/管理 ======
+  function renderAdmin() {
+    if (isAdmin()) {
+      // 已登录：显示管理面板
+      app.innerHTML = `
+        <div class="container">
+          <div class="admin-page fade-in">
+            <div class="admin-card">
+              <div class="admin-icon">✅</div>
+              <h2>已登录作者账号</h2>
+              <p class="admin-user">GitHub: @${escapeHtml(getAdminUser())}</p>
+              <p class="admin-tip">你现在可以新建、编辑、删除任意文章，发布后会自动提交到 GitHub 并重新部署。</p>
+              <div class="admin-actions">
+                <a href="#/write" class="ed-btn ed-btn-primary">✍️ 写新文章</a>
+                <a href="#/" class="ed-btn ed-btn-ghost">浏览文章</a>
+                <button class="ed-btn ed-btn-ghost" id="logoutBtn">退出登录</button>
+              </div>
+              <div class="admin-warn">
+                <strong>⚠️ 安全提示</strong>：Token 仅存在当前浏览器的 sessionStorage，关闭浏览器即清空。
+                请勿在公共电脑上保持登录。用完建议主动退出。
+              </div>
+            </div>
+          </div>
+        </div>`;
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        adminLogout();
+        alert('已退出登录。');
+        location.hash = '#/';
+      });
+      return;
+    }
+
+    // 未登录：登录表单
+    app.innerHTML = `
+      <div class="container">
+        <div class="admin-page fade-in">
+          <div class="admin-card">
+            <div class="admin-icon">🔐</div>
+            <h2>作者登录</h2>
+            <p class="admin-tip">登录后可在线编辑、发布文章。仅博客作者需要登录，访客可直接浏览。</p>
+            <form id="loginForm" class="login-form">
+              <label>GitHub Personal Access Token</label>
+              <input type="password" id="loginToken" placeholder="ghp_..." autocomplete="off" required />
+              <button type="submit" class="ed-btn ed-btn-primary" id="loginBtn">验证并登录</button>
+            </form>
+            <details class="login-help">
+              <summary>如何获取 Token？</summary>
+              <ol>
+                <li>打开 <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></li>
+                <li>Generate new token (classic)，勾选 <code>repo</code> 权限</li>
+                <li>复制生成的 token 粘贴到上方</li>
+              </ol>
+              <p>Token 只存在你浏览器的 sessionStorage（关浏览器即清空），不会出现在公开代码里。</p>
+            </details>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = document.getElementById('loginToken').value.trim();
+      if (!token) return;
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 验证中…';
+      const user = await validateToken(token);
+      if (user) {
+        try {
+          sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+          sessionStorage.setItem(ADMIN_USER_KEY, user);
+        } catch (e) {}
+        alert('✅ 登录成功！欢迎，' + user);
+        location.hash = '#/';
+      } else {
+        btn.disabled = false;
+        btn.textContent = '验证并登录';
+        alert('❌ Token 无效，请检查 token 是否正确且有 repo 权限。');
+      }
     });
   }
 
@@ -600,6 +748,8 @@
     } else if (hash.startsWith('/edit/')) {
       document.querySelector('.main-nav a[data-route="write"]').classList.add('active');
       renderWrite(hash.slice(6));
+    } else if (hash === '/admin') {
+      renderAdmin();
     } else if (hash.startsWith('/post/')) {
       renderPost(hash.slice(6));
     } else {
@@ -622,7 +772,18 @@
   // 回到顶部
   backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-  // 启动
-  window.addEventListener('hashchange', router);
-  router();
+  // 启动：先加载文章数据，再启动路由
+  async function init() {
+    try {
+      const r = await fetch('js/posts.json', { cache: 'no-store' });
+      if (r.ok) { ARTICLES = await r.json(); }
+      else { app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>文章加载失败</h3><p>HTTP ' + r.status + '</p></div></div>'; return; }
+    } catch (e) {
+      app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📡</div><h3>无法加载文章数据</h3><p>请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
+      return;
+    }
+    window.addEventListener('hashchange', router);
+    router();
+  }
+  init();
 })();

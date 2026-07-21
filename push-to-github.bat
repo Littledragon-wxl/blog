@@ -4,7 +4,7 @@ setlocal
 title Push to GitHub
 
 REM ====== Edit this line: your GitHub repo URL ======
-set "REMOTE=https://github.com/USERNAME/REPO.git"
+set "REMOTE=https://github.com/Littledragon-wxl/blog.git"
 REM ==================================================
 
 cd /d "%~dp0"
