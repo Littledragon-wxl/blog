@@ -875,6 +875,31 @@ ul, ol { padding-left: 1.4em; }
 .login-help code { font-family: var(--mono); background: var(--bg-card); padding: 1px 6px; border-radius: 4px; font-size: .85em; }
 .login-help p { margin-top: 8px; color: var(--text-mute); }
 
+/* 站点信息编辑表单 */
+.site-edit-card { margin-top: 24px; text-align: left; }
+.site-form { display: flex; flex-direction: column; gap: 14px; }
+.sf-row { display: flex; gap: 14px; }
+.sf-field { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.sf-field-small { flex: 0 0 90px; }
+.sf-field label { font-size: .82rem; color: var(--text-soft); font-weight: 500; }
+.sf-field input, .sf-field textarea {
+  font-family: var(--sans);
+  font-size: .92rem;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+  resize: vertical;
+}
+.sf-field input:focus, .sf-field textarea:focus { border-color: var(--accent); }
+@media (max-width: 540px) {
+  .sf-row { flex-direction: column; }
+  .sf-field-small { flex: 1; }
+}
+
 /* ====== 空状态(保留) ====== */
 
 /* ====== 回到顶部 ====== */

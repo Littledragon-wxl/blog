@@ -13,8 +13,11 @@
     marked.setOptions({ breaks: true, gfm: true });
   }
 
-  // 文章数据（运行时从 data/articles.json 加载）
+  // 文章数据（运行时从 js/posts.json 加载）
   let ARTICLES = [];
+
+  // 站点配置（运行时从 js/site.json 加载）
+  let SITE = {};
 
   // ====== 工具函数 ======
   function readingTime(markdown) {
@@ -94,9 +97,9 @@
     return btoa(unescape(encodeURIComponent(str)));
   }
 
-  async function githubGetFile() {
+  async function githubGetFile(path) {
     const token = getAdminToken();
-    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + CONFIG.dataPath + '?ref=' + CONFIG.branch;
+    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + path + '?ref=' + CONFIG.branch;
     const r = await fetch(url, {
       headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json' }
     });
@@ -104,9 +107,9 @@
     return r.json();
   }
 
-  async function githubCommitFile(content, sha, message) {
+  async function githubCommitFile(content, sha, path, message) {
     const token = getAdminToken();
-    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + CONFIG.dataPath;
+    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + path;
     const r = await fetch(url, {
       method: 'PUT',
       headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
@@ -121,22 +124,29 @@
 
   // 发布文章（新增或更新）—— 提交到 GitHub
   async function publishArticle(article) {
-    const file = await githubGetFile();
+    const file = await githubGetFile(CONFIG.postsPath);
     let list = ARTICLES.slice();
     const idx = list.findIndex(a => a.id === article.id);
     const isUpdate = idx >= 0;
     if (isUpdate) list[idx] = article; else list.unshift(article);
-    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, (isUpdate ? '更新文章: ' : '发布新文章: ') + article.title);
+    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, CONFIG.postsPath, (isUpdate ? '更新文章: ' : '发布新文章: ') + article.title);
     if (isUpdate) ARTICLES[idx] = article; else ARTICLES.unshift(article);
   }
 
   // 删除文章 —— 提交到 GitHub
   async function deleteArticlePub(id) {
-    const file = await githubGetFile();
+    const file = await githubGetFile(CONFIG.postsPath);
     const target = ARTICLES.find(a => a.id === id);
     const list = ARTICLES.filter(a => a.id !== id);
-    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, '删除文章: ' + (target ? target.title : id));
+    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, CONFIG.postsPath, '删除文章: ' + (target ? target.title : id));
     ARTICLES = list;
+  }
+
+  // 发布站点信息 —— 提交 js/site.json
+  async function publishSite(newSite) {
+    const file = await githubGetFile(CONFIG.sitePath);
+    await githubCommitFile(JSON.stringify(newSite, null, 2), file.sha, CONFIG.sitePath, '更新站点信息');
+    SITE = newSite;
   }
 
   function getAllTags() {
@@ -577,6 +587,7 @@
   function renderAdmin() {
     if (isAdmin()) {
       // 已登录：显示管理面板
+      const s = SITE || {};
       app.innerHTML = `
         <div class="container">
           <div class="admin-page fade-in">
@@ -587,6 +598,7 @@
               <p class="admin-tip">你现在可以新建、编辑、删除任意文章，发布后会自动提交到 GitHub 并重新部署。</p>
               <div class="admin-actions">
                 <a href="#/write" class="ed-btn ed-btn-primary">✍️ 写新文章</a>
+                <a href="#/about" class="ed-btn ed-btn-ghost">关于页</a>
                 <a href="#/" class="ed-btn ed-btn-ghost">浏览文章</a>
                 <button class="ed-btn ed-btn-ghost" id="logoutBtn">退出登录</button>
               </div>
@@ -595,12 +607,86 @@
                 请勿在公共电脑上保持登录。用完建议主动退出。
               </div>
             </div>
+
+            <div class="admin-card site-edit-card">
+              <h2>✏️ 站点信息编辑</h2>
+              <p class="admin-tip">修改后点"保存设置"会提交到 GitHub，约 1 分钟后关于页更新。</p>
+              <form id="siteForm" class="site-form">
+                <div class="sf-row">
+                  <div class="sf-field">
+                    <label>博客名</label>
+                    <input type="text" id="sfName" value="${escapeHtml(s.name||'')}" />
+                  </div>
+                  <div class="sf-field sf-field-small">
+                    <label>头像文字</label>
+                    <input type="text" id="sfAvatarText" maxlength="2" value="${escapeHtml(s.avatarText||'')}" />
+                  </div>
+                </div>
+                <div class="sf-row">
+                  <div class="sf-field">
+                    <label>作者</label>
+                    <input type="text" id="sfAuthor" value="${escapeHtml(s.author||'')}" />
+                  </div>
+                  <div class="sf-field">
+                    <label>角色</label>
+                    <input type="text" id="sfRole" value="${escapeHtml(s.role||'')}" />
+                  </div>
+                </div>
+                <div class="sf-field">
+                  <label>个人简介</label>
+                  <textarea id="sfBio" rows="3">${escapeHtml(s.bio||'')}</textarea>
+                </div>
+                <div class="sf-field">
+                  <label>技能（逗号分隔）</label>
+                  <input type="text" id="sfSkills" value="${escapeHtml((s.skills||[]).join(', '))}" />
+                </div>
+                <div class="sf-field">
+                  <label>兴趣爱好（逗号分隔）</label>
+                  <input type="text" id="sfInterests" value="${escapeHtml((s.interests||[]).join(', '))}" />
+                </div>
+                <div class="sf-field">
+                  <label>联系方式</label>
+                  <input type="text" id="sfContact" value="${escapeHtml(s.contact||'')}" />
+                </div>
+                <div class="admin-actions" style="margin-top: 18px;">
+                  <button type="submit" class="ed-btn ed-btn-primary" id="siteSaveBtn">保存设置</button>
+                  <a href="#/about" class="ed-btn ed-btn-ghost">预览关于页</a>
+                </div>
+                <div id="siteSaveStatus" class="save-status" style="margin-top:10px;"></div>
+              </form>
+            </div>
           </div>
         </div>`;
       document.getElementById('logoutBtn').addEventListener('click', () => {
         adminLogout();
         alert('已退出登录。');
         location.hash = '#/';
+      });
+      document.getElementById('siteForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newSite = {
+          name: document.getElementById('sfName').value.trim(),
+          author: document.getElementById('sfAuthor').value.trim(),
+          role: document.getElementById('sfRole').value.trim(),
+          avatarText: document.getElementById('sfAvatarText').value.trim().slice(0, 2),
+          bio: document.getElementById('sfBio').value.trim(),
+          skills: document.getElementById('sfSkills').value.split(/[,，、]/).map(t => t.trim()).filter(Boolean),
+          interests: document.getElementById('sfInterests').value.split(/[,，、]/).map(t => t.trim()).filter(Boolean),
+          contact: document.getElementById('sfContact').value.trim()
+        };
+        const btn = document.getElementById('siteSaveBtn');
+        const status = document.getElementById('siteSaveStatus');
+        btn.disabled = true; btn.textContent = '⏳ 保存中…';
+        status.textContent = '正在提交到 GitHub…';
+        try {
+          await publishSite(newSite);
+          status.textContent = '✅ 已保存！约 1 分钟后关于页更新。';
+          setTimeout(() => { location.hash = '#/about'; }, 800);
+        } catch (err) {
+          status.textContent = '❌ 保存失败：' + err.message;
+          btn.disabled = false; btn.textContent = '保存设置';
+          alert('保存失败：' + err.message);
+        }
       });
       return;
     }
@@ -772,14 +858,19 @@
   // 回到顶部
   backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-  // 启动：先加载文章数据，再启动路由
+  // 启动：先加载文章和站点数据，再启动路由
   async function init() {
     try {
-      const r = await fetch('js/posts.json', { cache: 'no-store' });
-      if (r.ok) { ARTICLES = await r.json(); }
-      else { app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>文章加载失败</h3><p>HTTP ' + r.status + '</p></div></div>'; return; }
+      const [pr, sr] = await Promise.all([
+        fetch('js/posts.json', { cache: 'no-store' }),
+        fetch('js/site.json', { cache: 'no-store' })
+      ]);
+      if (!pr.ok) { app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>文章加载失败</h3><p>HTTP ' + pr.status + '</p></div></div>'; return; }
+      if (!sr.ok) { app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>站点信息加载失败</h3><p>HTTP ' + sr.status + '</p></div></div>'; return; }
+      ARTICLES = await pr.json();
+      SITE = await sr.json();
     } catch (e) {
-      app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📡</div><h3>无法加载文章数据</h3><p>请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
+      app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📡</div><h3>无法加载数据</h3><p>请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
       return;
     }
     window.addEventListener('hashchange', router);
