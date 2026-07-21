@@ -32,7 +32,7 @@ blog/
 │   ├── app.js            # 路由、渲染、编辑器、存储逻辑
 │   └── lib/marked.min.js # Markdown 解析（离线）
 ├── assets/               # 静态资源
-├── .gitlab-ci.yml        # GitLab Pages 自动部署
+├── .github/workflows/deploy.yml  # GitHub Pages 自动部署
 └── start-blog.bat        # 本地一键启动（可选）
 ```
 
@@ -73,14 +73,16 @@ python -m http.server 8765
 }
 ```
 
-## ☁️ 部署到 GitLab Pages
+## ☁️ 部署到 GitHub Pages
 
-1. 在 GitLab 新建空仓库
-2. 按下方命令 push 代码
-3. 进入仓库 **Settings → Pages** 查看上线地址
-4. 每次 push 到 `main` 分支自动重新部署
+1. 在 GitHub 新建空仓库（不要勾选 Initialize with README）
+2. push 代码到 main 分支
+3. 进入仓库 **Settings → Pages → Source** 选 **GitHub Actions**
+4. 每次 push 到 `main` 分支自动重新部署，Actions 标签页可查看部署状态
 
-访问地址：`https://<你的用户名>.gitlab.io/<仓库名>/`
+访问地址：`https://<你的用户名>.github.io/<仓库名>/`
+
+> push 时密码用 Personal Access Token（Settings → Developer settings → Tokens），勾选 `repo` 权限。
 
 ## 📄 许可
 
