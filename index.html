@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一个关于技术与生活随笔的个人博客，记录代码与思考。">
+  <title>码与生活 · 个人博客</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="site-header" id="siteHeader">
+    <div class="container nav-wrap">
+      <a href="#/" class="logo">
+        <span class="logo-mark">码</span>
+        <span class="logo-text">码与生活</span>
+      </a>
+      <nav class="main-nav" id="mainNav">
+        <a href="#/" data-route="home">文章</a>
+        <a href="#/tags" data-route="tags">标签</a>
+        <a href="#/write" data-route="write" class="nav-write">✍️ 写作</a>
+        <a href="#/about" data-route="about">关于</a>
+      </nav>
+      <button class="nav-toggle" id="navToggle" aria-label="菜单">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="site-main" id="app">
+    <!-- 由 JS 渲染 -->
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo-mark small">码</span>
+          <span>码与生活</span>
+        </div>
+        <p class="footer-desc">记录代码、思考与生活的点滴。</p>
+        <div class="footer-links">
+          <a href="#/">文章</a>
+          <a href="#/tags">标签</a>
+          <a href="#/about">关于</a>
+        </div>
+        <p class="footer-copy">© 2026 码与生活 · 用心写作，认真生活</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 回到顶部 -->
+  <button class="back-to-top" id="backToTop" aria-label="回到顶部">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+  </button>
+
+  <script src="js/lib/marked.min.js"></script>
+  <script src="js/articles.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

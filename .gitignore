@@ -1,0 +1,23 @@
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志与临时
+*.log
+tmp/
+.cache/
+
+# 依赖（本项目无，预留）
+node_modules/
+
+# 本地草稿与备份
+*.bak
+drafts/

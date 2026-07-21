@@ -1,0 +1,16 @@
+# GitLab Pages 部署配置
+# 纯静态博客，push 到 main 分支后自动上线
+# 访问地址：https://<你的GitLab用户名>.gitlab.io/<仓库名>/
+pages:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "🚀 部署纯静态博客到 GitLab Pages"
+    - rm -rf public
+    - mkdir public
+    - cp -r index.html css js assets public/ 2>/dev/null || true
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
