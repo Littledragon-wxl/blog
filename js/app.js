@@ -41,7 +41,7 @@
   }
 
   function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, c => ({
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
   }
@@ -765,9 +765,11 @@
 
   // ====== 渲染：关于页 ======
   function renderAbout() {
+    const adminBadge = isAdmin() ? `<div class="article-top-bar"><span></span><a href="#/admin" class="action-btn edit-btn">✏️ 编辑站点信息</a></div>` : '';
     app.innerHTML = `
       <div class="container">
         <div class="about-page fade-in">
+          ${adminBadge}
           <div class="about-hero">
             <div class="about-avatar">${escapeHtml(SITE.avatarText)}</div>
             <div class="about-hero-text">
