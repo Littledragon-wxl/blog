@@ -1,10 +1,22 @@
 {
   "name": "码与生活",
-  "author": "佚名",
+  "author": "Littledragon_wxl",
   "role": "全栈开发者 · 写作爱好者",
   "avatarText": "码",
   "bio": "白天写代码，深夜写文字。相信好的程序和好的文章一样，都需要耐心打磨。这里记录我的技术探索与生活思考。",
-  "skills": ["JavaScript / TypeScript", "Python", "React / Vue", "Node.js", "CSS 与设计", "Markdown 写作"],
-  "interests": ["手冲咖啡", "深夜阅读", "长跑", "胶片摄影"],
-  "contact": "写邮件给我，或在关于页留言"
+  "skills": [
+    "JavaScript / TypeScript",
+    "Python",
+    "React / Vue",
+    "Node.js",
+    "CSS 与设计",
+    "Markdown 写作"
+  ],
+  "interests": [
+    "手冲咖啡",
+    "深夜阅读",
+    "长跑",
+    "胶片摄影"
+  ],
+  "contact": "1817380549@qq.com"
 }
