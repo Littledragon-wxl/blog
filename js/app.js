@@ -46,6 +46,52 @@
     }[c]));
   }
 
+  // ====== HTML → Markdown 转换器（富文本编辑器内容转回 markdown 存储）======
+  function htmlToMarkdown(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    function walk(node) {
+      if (!node) return '';
+      if (node.nodeType === 3) return node.textContent;
+      if (node.nodeType !== 1) return '';
+      const tag = node.tagName.toLowerCase();
+      const inner = Array.from(node.childNodes).map(walk).join('');
+      switch (tag) {
+        case 'b': case 'strong': return '**' + inner + '**';
+        case 'i': case 'em': return '*' + inner + '*';
+        case 'code':
+          if (node.parentNode && node.parentNode.tagName === 'PRE') return inner;
+          return '`' + inner + '`';
+        case 'pre': {
+          const codeEl = node.querySelector('code') || node;
+          let code = codeEl.textContent;
+          if (code.endsWith('\n')) code = code.slice(0, -1);
+          return '\n```\n' + code + '\n```\n';
+        }
+        case 'h1': return '\n# ' + inner.trim() + '\n\n';
+        case 'h2': return '\n## ' + inner.trim() + '\n\n';
+        case 'h3': return '\n### ' + inner.trim() + '\n\n';
+        case 'h4': return '\n#### ' + inner.trim() + '\n\n';
+        case 'blockquote':
+          return '\n' + inner.trim().split('\n').map(l => '> ' + l).join('\n') + '\n\n';
+        case 'ul':
+          return '\n' + Array.from(node.children).filter(c => c.tagName === 'LI')
+            .map(li => '- ' + walk(li).trim()).join('\n') + '\n\n';
+        case 'ol':
+          return '\n' + Array.from(node.children).filter(c => c.tagName === 'LI')
+            .map((li, i) => (i + 1) + '. ' + walk(li).trim()).join('\n') + '\n\n';
+        case 'li': return inner;
+        case 'a': {
+          const href = node.getAttribute('href') || '';
+          return '[' + inner + '](' + href + ')';
+        }
+        case 'br': return '\n';
+        case 'p': case 'div': return inner + '\n\n';
+        default: return inner;
+      }
+    }
+    return walk(doc.body).replace(/\n{3,}/g, '\n\n').trim();
+  }
+
   // 视图偏好（卡片 / 列表），记忆在 localStorage
   function getView() {
     try { return localStorage.getItem('blog-view') || 'card'; }
@@ -414,30 +460,29 @@
             </div>
 
             <div class="ed-toolbar" id="edToolbar">
-              <button type="button" data-md="h1" title="一级标题">H1</button>
-              <button type="button" data-md="h2" title="二级标题">H2</button>
-              <button type="button" data-md="h3" title="三级标题">H3</button>
+              <button type="button" data-cmd="formatBlock-h2" title="二级标题">H2</button>
+              <button type="button" data-cmd="formatBlock-h3" title="三级标题">H3</button>
+              <button type="button" data-cmd="formatBlock-h4" title="四级标题">H4</button>
               <span class="tb-sep"></span>
-              <button type="button" data-md="bold" title="粗体"><b>B</b></button>
-              <button type="button" data-md="italic" title="斜体"><i>I</i></button>
-              <button type="button" data-md="code" title="行内代码">&lt;/&gt;</button>
-              <button type="button" data-md="codeblock" title="代码块">{ }</button>
+              <button type="button" data-cmd="bold" title="粗体 (Ctrl+B)"><b>B</b></button>
+              <button type="button" data-cmd="italic" title="斜体 (Ctrl+I)"><i>I</i></button>
+              <button type="button" data-cmd="underline" title="下划线"><u>U</u></button>
+              <button type="button" data-cmd="inlineCode" title="行内代码">&lt;/&gt;</button>
               <span class="tb-sep"></span>
-              <button type="button" data-md="quote" title="引用">❝</button>
-              <button type="button" data-md="ul" title="无序列表">• 列表</button>
-              <button type="button" data-md="ol" title="有序列表">1. 列表</button>
-              <button type="button" data-md="link" title="链接">🔗</button>
-              <button type="button" data-md="hr" title="分隔线">――</button>
+              <button type="button" data-cmd="formatBlock-blockquote" title="引用">❝</button>
+              <button type="button" data-cmd="insertUnorderedList" title="无序列表">• 列表</button>
+              <button type="button" data-cmd="insertOrderedList" title="有序列表">1. 列表</button>
+              <button type="button" data-cmd="createLink" title="插入链接">🔗</button>
+              <button type="button" data-cmd="codeBlock" title="代码块">{ }</button>
+              <span class="tb-sep"></span>
+              <button type="button" data-cmd="sourceToggle" title="切换源码模式" id="srcToggle">{'</>'} 源码</button>
             </div>
 
-            <div class="ed-split">
-              <div class="ed-editor-pane">
-                <textarea id="edContent" class="ed-textarea" placeholder="在这里用 Markdown 写作……&#10;&#10;## 开始你的故事&#10;&#10;支持 **粗体**、*斜体*、\`代码\`、引用、列表等。">${escapeHtml(a.content)}</textarea>
-              </div>
-              <div class="ed-preview-pane">
-                <div class="ed-preview-label">预览</div>
-                <div class="markdown-body" id="edPreview"></div>
-              </div>
+            <div class="ed-wysiwyg-wrap" id="edWysiwygWrap">
+              <div id="edContent" class="ed-wysiwyg markdown-body" contenteditable="true"
+                data-placeholder="开始你的故事……按 Ctrl+B 加粗、Ctrl+I 斜体；用上方工具栏或快捷键"></div>
+              <textarea id="edSource" class="ed-textarea ed-source" style="display:none"
+                placeholder="在这里直接写 Markdown……"></textarea>
             </div>
 
             <div class="ed-actions">
@@ -448,18 +493,28 @@
         </div>
       </div>`;
 
-    // ====== 编辑器交互 ======
-    const ta = document.getElementById('edContent');
-    const preview = document.getElementById('edPreview');
+    // ====== 编辑器交互（富文本 WYSIWYG，可切源码）======
+    const edEl = document.getElementById('edContent');      // contenteditable 富文本
+    const srcEl = document.getElementById('edSource');      // 源码 textarea
     const titleEl = document.getElementById('edTitle');
     const statusEl = document.getElementById('saveStatus');
+    const srcToggleBtn = document.getElementById('srcToggle');
     let currentEmoji = a.emoji;
+    let sourceMode = false;
 
-    // 实时预览
-    function updatePreview() {
-      preview.innerHTML = marked.parse(ta.value || '*预览区会实时显示你的 Markdown 内容*');
+    // 获取当前 markdown
+    function getMarkdown() {
+      if (sourceMode) return srcEl.value;
+      return htmlToMarkdown(edEl.innerHTML);
     }
-    updatePreview();
+
+    // 把 markdown 渲染进富文本
+    function loadToWysiwyg(md) {
+      edEl.innerHTML = marked.parse(md || '');
+    }
+
+    // 初始载入
+    if (a.content) loadToWysiwyg(a.content);
 
     // 草稿自动保存（仅新建时）
     const draftKey = 'blog-draft';
@@ -468,7 +523,7 @@
         const draft = localStorage.getItem(draftKey);
         if (draft && !a.content) {
           const d = JSON.parse(draft);
-          if (d.content) { ta.value = d.content; titleEl.value = d.title || ''; updatePreview(); }
+          if (d.content) { loadToWysiwyg(d.content); titleEl.value = d.title || ''; }
         }
       } catch (e) {}
     }
@@ -478,11 +533,19 @@
       if (editing) return;
       clearTimeout(draftTimer);
       draftTimer = setTimeout(() => {
-        try { localStorage.setItem(draftKey, JSON.stringify({ title: titleEl.value, content: ta.value })); } catch (e) {}
+        try { localStorage.setItem(draftKey, JSON.stringify({ title: titleEl.value, content: getMarkdown() })); } catch (e) {}
       }, 800);
     }
 
-    ta.addEventListener('input', () => { updatePreview(); autoDraft(); });
+    edEl.addEventListener('input', autoDraft);
+    srcEl.addEventListener('input', autoDraft);
+
+    // 粘贴：转纯文本，去除外来格式
+    edEl.addEventListener('paste', e => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
 
     // emoji 选择
     const emojiPicksEl = document.getElementById('emojiPicks');
@@ -496,47 +559,79 @@
     });
     emojiTextEl.addEventListener('input', () => { currentEmoji = emojiTextEl.value || '📝'; });
 
-    // 封面实时预览（更新 emoji pick 高亮）
-    // 工具栏：插入 Markdown
-    function wrapSelection(before, after, placeholder) {
-      const start = ta.selectionStart, end = ta.selectionEnd;
-      const sel = ta.value.slice(start, end) || placeholder || '';
-      const newText = before + sel + (after || '');
-      ta.value = ta.value.slice(0, start) + newText + ta.value.slice(end);
-      ta.focus();
-      ta.setSelectionRange(start + before.length, start + before.length + sel.length);
-      updatePreview(); autoDraft();
-    }
-    function prefixLines(prefix) {
-      const start = ta.selectionStart, end = ta.selectionEnd;
-      const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
-      const block = ta.value.slice(lineStart, end);
-      const newBlock = block.split('\n').map((l, i) => prefix.replace('N', i + 1) + l).join('\n');
-      ta.value = ta.value.slice(0, lineStart) + newBlock + ta.value.slice(end);
-      ta.focus();
-      ta.setSelectionRange(lineStart, lineStart + newBlock.length);
-      updatePreview(); autoDraft();
+    // 工具栏
+    const toolbar = document.getElementById('edToolbar');
+    function wrapWithTag(tagName, placeholder) {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      if (range.collapsed) {
+        const el = document.createElement(tagName);
+        el.textContent = placeholder || '';
+        range.insertNode(el);
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        sel.removeAllRanges(); sel.addRange(r);
+      } else {
+        const el = document.createElement(tagName);
+        try { el.appendChild(range.extractContents()); } catch (e) { return; }
+        range.insertNode(el);
+      }
+      edEl.focus();
+      autoDraft();
     }
 
-    const toolbar = document.getElementById('edToolbar');
     toolbar.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-md]');
+      const btn = e.target.closest('button[data-cmd]');
       if (!btn) return;
-      const type = btn.dataset.md;
-      switch (type) {
-        case 'h1': prefixLines('# '); break;
-        case 'h2': prefixLines('## '); break;
-        case 'h3': prefixLines('### '); break;
-        case 'bold': wrapSelection('**', '**', '粗体文字'); break;
-        case 'italic': wrapSelection('*', '*', '斜体文字'); break;
-        case 'code': wrapSelection('`', '`', 'code'); break;
-        case 'codeblock': wrapSelection('\n```\n', '\n```\n', '代码'); break;
-        case 'quote': prefixLines('> '); break;
-        case 'ul': prefixLines('- '); break;
-        case 'ol': prefixLines('N. '); break;
-        case 'link': wrapSelection('[', '](https://)', '链接文字'); break;
-        case 'hr': wrapSelection('\n---\n', '', ''); break;
+      const cmd = btn.dataset.cmd;
+
+      // 源码模式：只允许切换回富文本
+      if (sourceMode && cmd !== 'sourceToggle') return;
+
+      edEl.focus();
+
+      if (cmd === 'sourceToggle') {
+        if (sourceMode) {
+          // 源码 → 富文本
+          loadToWysiwyg(srcEl.value);
+          edEl.style.display = '';
+          srcEl.style.display = 'none';
+          srcToggleBtn.innerHTML = '{</>} 源码';
+          sourceMode = false;
+        } else {
+          // 富文本 → 源码
+          srcEl.value = getMarkdown();
+          edEl.style.display = 'none';
+          srcEl.style.display = '';
+          srcToggleBtn.innerHTML = '👁 富文本';
+          sourceMode = true;
+          srcEl.focus();
+        }
+        return;
       }
+
+      if (cmd.startsWith('formatBlock-')) {
+        const tag = cmd.split('-')[1];
+        document.execCommand('formatBlock', false, tag);
+      } else if (cmd === 'inlineCode') {
+        wrapWithTag('code', 'code');
+      } else if (cmd === 'codeBlock') {
+        const sel = window.getSelection();
+        const hasSel = sel.rangeCount && !sel.getRangeAt(0).collapsed;
+        if (hasSel) {
+          wrapWithTag('pre', '');
+        } else {
+          document.execCommand('formatBlock', false, 'pre');
+        }
+      } else if (cmd === 'createLink') {
+        const url = prompt('请输入链接地址（http:// 或 https://）：', 'https://');
+        if (url && url !== 'https://') document.execCommand('createLink', false, url);
+      } else {
+        // bold / italic / underline / insertUnorderedList / insertOrderedList
+        document.execCommand(cmd, false, null);
+      }
+      autoDraft();
     });
 
     // 保存（提交到 GitHub 发布）
@@ -547,9 +642,9 @@
         return;
       }
       const title = titleEl.value.trim();
-      const content = ta.value.trim();
+      const content = getMarkdown().trim();
       if (!title) { titleEl.focus(); alert('请填写标题'); return; }
-      if (!content) { ta.focus(); alert('请填写正文内容'); return; }
+      if (!content) { edEl.focus(); alert('请填写正文内容'); return; }
       const category = document.getElementById('edCategory').value;
       const tagsRaw = document.getElementById('edTags').value;
       const tags = tagsRaw.split(/[,，、]/).map(t => t.trim()).filter(Boolean);
