@@ -1094,11 +1094,11 @@
       renderWrite();
     } else if (hash.startsWith('/edit/')) {
       document.querySelector('.main-nav a[data-route="write"]').classList.add('active');
-      renderWrite(hash.slice(6));
+      renderWrite(decodeURIComponent(hash.slice(6)));
     } else if (hash === '/admin') {
       renderAdmin();
     } else if (hash.startsWith('/post/')) {
-      renderPost(hash.slice(6));
+      renderPost(decodeURIComponent(hash.slice(6)));
     } else {
       renderHome();
     }
