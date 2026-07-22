@@ -85,7 +85,12 @@
           return '[' + inner + '](' + href + ')';
         }
         case 'br': return '\n';
-        case 'p': case 'div': return inner + '\n\n';
+        case 'p': case 'div':
+          // callout 提示框：保留为原始 HTML（marked 默认透传）
+          if (tag === 'div' && node.classList && node.classList.contains('callout')) {
+            return '\n<div class="callout">' + node.innerHTML.trim() + '</div>\n\n';
+          }
+          return inner + '\n\n';
         default: return inner;
       }
     }
@@ -469,7 +474,8 @@
               <button type="button" data-cmd="underline" title="下划线"><u>U</u></button>
               <button type="button" data-cmd="inlineCode" title="行内代码">&lt;/&gt;</button>
               <span class="tb-sep"></span>
-              <button type="button" data-cmd="formatBlock-blockquote" title="引用">❝</button>
+              <button type="button" data-cmd="formatBlock-blockquote" title="引用">❝ 引用</button>
+              <button type="button" data-cmd="callout" title="彩色提示框">📌 提示框</button>
               <button type="button" data-cmd="insertUnorderedList" title="无序列表">• 列表</button>
               <button type="button" data-cmd="insertOrderedList" title="有序列表">1. 列表</button>
               <button type="button" data-cmd="createLink" title="插入链接">🔗</button>
@@ -624,6 +630,37 @@
         } else {
           document.execCommand('formatBlock', false, 'pre');
         }
+      } else if (cmd === 'callout') {
+        // 插入/切换彩色提示框（callout）
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        // 检查是否已在 callout 内
+        const node = sel.anchorNode;
+        const block = node.nodeType === 1 ? node : node.parentNode;
+        const inCallout = block.closest && block.closest('.callout');
+        if (inCallout) {
+          // 移出 callout
+          const p = document.createElement('p');
+          while (inCallout.firstChild) p.appendChild(inCallout.firstChild);
+          inCallout.parentNode.replaceChild(p, inCallout);
+        } else {
+          const div = document.createElement('div');
+          div.className = 'callout';
+          div.setAttribute('data-callout', '');
+          if (range.collapsed) {
+            div.innerHTML = '提示内容…';
+          } else {
+            try { div.appendChild(range.extractContents()); } catch (e) { return; }
+          }
+          range.insertNode(div);
+          // 光标放进 callout 末尾
+          const r = document.createRange();
+          r.selectNodeContents(div);
+          r.collapse(false);
+          sel.removeAllRanges(); sel.addRange(r);
+        }
+        edEl.focus();
       } else if (cmd === 'createLink') {
         const url = prompt('请输入链接地址（http:// 或 https://）：', 'https://');
         if (url && url !== 'https://') document.execCommand('createLink', false, url);

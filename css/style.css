@@ -464,6 +464,24 @@ ul, ol { padding-left: 1.4em; }
   font-size: 1rem;
 }
 .markdown-body blockquote p { margin: 0; }
+
+/* 提示框（callout）— 编辑器和阅读页共用样式 */
+.markdown-body .callout,
+.ed-wysiwyg .callout {
+  margin: 1.4em 0;
+  padding: 16px 22px 16px 26px;
+  border-left: 5px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.75;
+  box-shadow: var(--shadow-sm);
+}
+.markdown-body .callout p:first-child,
+.ed-wysiwyg .callout p:first-child { margin-top: 0; }
+.markdown-body .callout p:last-child,
+.ed-wysiwyg .callout p:last-child { margin-bottom: 0; }
 .markdown-body ul, .markdown-body ol { margin: 0 0 1.2em; padding-left: 1.6em; }
 .markdown-body li { margin: .4em 0; }
 .markdown-body li > ul, .markdown-body li > ol { margin: .4em 0; }
