@@ -489,6 +489,20 @@
                 data-placeholder="开始你的故事……按 Ctrl+B 加粗、Ctrl+I 斜体；用上方工具栏或快捷键"></div>
               <textarea id="edSource" class="ed-textarea ed-source" style="display:none"
                 placeholder="在这里直接写 Markdown……"></textarea>
+
+              <div class="block-add" id="blockAdd" title="插入块">+</div>
+              <div class="block-menu" id="blockMenu">
+                <button type="button" data-block="p">¶ 段落</button>
+                <button type="button" data-block="h2">H2 标题</button>
+                <button type="button" data-block="h3">H3 标题</button>
+                <button type="button" data-block="h4">H4 标题</button>
+                <button type="button" data-block="blockquote">❝ 引用</button>
+                <button type="button" data-block="callout">📌 提示框</button>
+                <button type="button" data-block="ul">• 无序列表</button>
+                <button type="button" data-block="ol">1. 有序列表</button>
+                <button type="button" data-block="pre">{} 代码块</button>
+                <button type="button" data-block="hr">―― 分隔线</button>
+              </div>
             </div>
 
             <div class="ed-actions">
@@ -669,6 +683,119 @@
         document.execCommand(cmd, false, null);
       }
       autoDraft();
+    });
+
+    // ====== 飞书式 + 快捷插入（左侧跟随光标）======
+    const wrapEl = document.getElementById('edWysiwygWrap');
+    const blockAdd = document.getElementById('blockAdd');
+    const blockMenu = document.getElementById('blockMenu');
+    const blockMenuBtns = blockMenu.querySelectorAll('button[data-block]');
+
+    function currentBlock() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return null;
+      const node = sel.anchorNode;
+      if (!node || !edEl.contains(node)) return null;
+      let el = node.nodeType === 1 ? node : node.parentNode;
+      // 找最近的块级元素
+      while (el && el !== edEl && !/^(P|DIV|H[1-6]|BLOCKQUOTE|PRE|LI)$/.test(el.tagName) && !el.classList.contains('callout')) {
+        el = el.parentNode;
+      }
+      if (!el || el === edEl) return edEl;
+      return el;
+    }
+
+    function positionBlockAdd() {
+      if (sourceMode) { wrapEl.classList.remove('show-add'); return; }
+      const block = currentBlock();
+      if (!block) { wrapEl.classList.remove('show-add'); return; }
+      // 块的相对 wrap 位置
+      const wrapRect = wrapEl.getBoundingClientRect();
+      const blockRect = block.getBoundingClientRect();
+      const top = blockRect.top - wrapRect.top + wrapEl.scrollTop;
+      blockAdd.style.top = top + 'px';
+      wrapEl.classList.add('show-add');
+    }
+
+    document.addEventListener('selectionchange', () => {
+      // 仅在富文本模式下、焦点在 edEl 时显示
+      if (sourceMode) { wrapEl.classList.remove('show-add'); return; }
+      if (document.activeElement === edEl) positionBlockAdd();
+      else wrapEl.classList.remove('show-add');
+    });
+    // 编辑器点击/键盘/滚动时也刷新位置
+    edEl.addEventListener('keyup', positionBlockAdd);
+    edEl.addEventListener('click', positionBlockAdd);
+    wrapEl.addEventListener('scroll', positionBlockAdd);
+    window.addEventListener('scroll', positionBlockAdd);
+
+    // 打开/关闭菜单
+    function closeBlockMenu() {
+      blockMenu.classList.remove('open');
+    }
+    blockAdd.addEventListener('click', e => {
+      e.stopPropagation();
+      if (blockMenu.classList.contains('open')) {
+        closeBlockMenu();
+      } else {
+        // 定位菜单在 + 按钮右边
+        const addRect = blockAdd.getBoundingClientRect();
+        const wrapRect = wrapEl.getBoundingClientRect();
+        blockMenu.style.top = (addRect.bottom - wrapRect.top + wrapEl.scrollTop + 6) + 'px';
+        blockMenu.style.left = (addRect.right - wrapRect.left + wrapEl.scrollLeft + 6) + 'px';
+        blockMenu.classList.add('open');
+      }
+    });
+    document.addEventListener('click', e => {
+      if (!blockMenu.contains(e.target) && e.target !== blockAdd) closeBlockMenu();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeBlockMenu();
+    });
+
+    // 菜单操作：把当前块转为目标块
+    blockMenuBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.block;
+        const block = currentBlock();
+        if (!block) { closeBlockMenu(); return; }
+        edEl.focus();
+        // 先把光标放到当前块内
+        const sel = window.getSelection();
+        const r = document.createRange();
+        r.selectNodeContents(block); r.collapse(false);
+        sel.removeAllRanges(); sel.addRange(r);
+
+        if (type === 'p') {
+          document.execCommand('formatBlock', false, 'p');
+        } else if (type === 'h2' || type === 'h3' || type === 'h4') {
+          document.execCommand('formatBlock', false, type);
+        } else if (type === 'blockquote') {
+          document.execCommand('formatBlock', false, 'blockquote');
+        } else if (type === 'pre') {
+          document.execCommand('formatBlock', false, 'pre');
+        } else if (type === 'ul') {
+          document.execCommand('insertUnorderedList');
+        } else if (type === 'ol') {
+          document.execCommand('insertOrderedList');
+        } else if (type === 'hr') {
+          document.execCommand('insertHorizontalRule');
+        } else if (type === 'callout') {
+          // 包成 callout
+          const div = document.createElement('div');
+          div.className = 'callout';
+          div.setAttribute('data-callout', '');
+          while (block.firstChild) div.appendChild(block.firstChild);
+          if (!div.textContent.trim()) div.innerHTML = '提示内容…';
+          block.parentNode.replaceChild(div, block);
+          const nr = document.createRange();
+          nr.selectNodeContents(div); nr.collapse(false);
+          sel.removeAllRanges(); sel.addRange(nr);
+        }
+        closeBlockMenu();
+        autoDraft();
+        positionBlockAdd();
+      });
     });
 
     // 保存（提交到 GitHub 发布）
