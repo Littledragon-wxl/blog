@@ -1,18 +1,5 @@
 [
   {
-    "id": "test-mrxnp6yr",
-    "title": "test",
-    "category": "技术",
-    "tags": [
-      "未分类"
-    ],
-    "date": "2026-07-23",
-    "excerpt": "test  很棒的",
-    "content": "## test\n\n#### 很棒的",
-    "emoji": "📝",
-    "cover": "ocean"
-  },
-  {
     "id": "build-personal-blog",
     "title": "从零搭建个人博客：技术选型与实现",
     "category": "技术",
