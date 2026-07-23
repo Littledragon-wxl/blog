@@ -167,8 +167,9 @@
       body: JSON.stringify({ message: message, content: b64encode(content), sha: sha, branch: CONFIG.branch })
     });
     if (!r.ok) {
-      const e = await r.json().catch(() => ({}));
-      throw new Error('提交失败: ' + r.status + ' ' + (e.message || ''));
+      let detail = '';
+      try { const e = await r.json(); detail = e.message || (e.errors && e.errors[0] && e.errors[0].message) || ''; } catch (e) {}
+      throw new Error('HTTP ' + r.status + (detail ? ' - ' + detail : ''));
     }
     return r.json();
   }
@@ -184,13 +185,25 @@
     if (isUpdate) ARTICLES[idx] = article; else ARTICLES.unshift(article);
   }
 
-  // 删除文章 —— 提交到 GitHub
+  // 删除文章 —— 提交到 GitHub（遇 409 sha 冲突自动重试一次）
   async function deleteArticlePub(id) {
-    const file = await githubGetFile(CONFIG.postsPath);
-    const target = ARTICLES.find(a => a.id === id);
-    const list = ARTICLES.filter(a => a.id !== id);
-    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, CONFIG.postsPath, '删除文章: ' + (target ? target.title : id));
-    ARTICLES = list;
+    let lastErr;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const file = await githubGetFile(CONFIG.postsPath);
+        const target = ARTICLES.find(a => a.id === id);
+        const list = ARTICLES.filter(a => a.id !== id);
+        await githubCommitFile(JSON.stringify(list, null, 2), file.sha, CONFIG.postsPath, '删除文章: ' + (target ? target.title : id));
+        ARTICLES = list;
+        return;
+      } catch (err) {
+        lastErr = err;
+        // 409 = sha 冲突（文件已被改动），重新拉最新 sha 再试一次
+        if (attempt === 0 && String(err.message).includes('409')) continue;
+        throw err;
+      }
+    }
+    throw lastErr;
   }
 
   // 提交后从 GitHub 重新拉取最新文章列表，确保本地与线上一致
@@ -410,15 +423,28 @@
     const delBtn = document.getElementById('delBtn');
     if (delBtn) {
       delBtn.addEventListener('click', async () => {
+        if (!isAdmin()) {
+          alert('登录已过期，请重新登录作者账号。');
+          location.hash = '#/admin';
+          return;
+        }
         if (!confirm('确定删除这篇文章吗？\n这将提交到 GitHub 并重新部署，所有访客都会看到删除结果。')) return;
         delBtn.disabled = true;
         delBtn.textContent = '⏳ 删除中…';
         try {
           await deleteArticlePub(a.id);
-          alert('✅ 已删除，约 1 分钟后线上更新。');
+          // 本地立即生效：内存已更新，直接重渲染首页（不依赖部署延迟）
+          alert('✅ 文章已删除。\n\n本地立即生效；线上约 1 分钟后同步（GitHub Pages 部署需要一点时间）。');
           location.hash = '#/';
         } catch (err) {
-          alert('删除失败：' + err.message);
+          const msg = String(err.message || '');
+          if (msg.includes('401') || msg.includes('403') || msg.includes('Bad credentials')) {
+            alert('删除失败：Token 已失效或无权限。\n请重新登录 #/admin 并输入有效 token。');
+            adminLogout();
+            location.hash = '#/admin';
+          } else {
+            alert('删除失败（' + msg + '）\n\n请把上面括号里的错误信息发给我，我据此定位。');
+          }
           delBtn.disabled = false;
           delBtn.textContent = '🗑 删除';
         }
@@ -871,10 +897,17 @@
         // 显示成功页面（不自动跳转，避免部署延迟导致文章找不到）
         showPublishSuccess(article);
       } catch (err) {
+        const msg = String(err.message || '');
         statusEl.textContent = '❌ 发布失败：' + err.message;
         saveBtn.disabled = false;
         saveBtn.textContent = editing ? '保存修改' : '发布文章';
-        alert('发布失败：' + err.message + '\n\n请检查：\n1. Token 是否有效且有 repo 权限\n2. 网络是否正常');
+        if (msg.includes('401') || msg.includes('403') || msg.includes('Bad credentials')) {
+          alert('发布失败：Token 已失效或无权限。\n请重新登录 #/admin 并输入有效 token。');
+          adminLogout();
+          location.hash = '#/admin';
+        } else {
+          alert('发布失败：' + err.message + '\n\n请检查：\n1. Token 是否有效且有 repo 权限\n2. 网络是否正常');
+        }
       }
     });
   }
