@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260723b';
+  const APP_VERSION = '20260724a';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -158,6 +158,12 @@
           return '[' + inner + '](' + href + ')';
         }
         case 'br': return '\n';
+        case 'img': {
+          const src = node.getAttribute('src') || '';
+          if (!src || node.getAttribute('data-uploading')) return '';
+          const alt = node.getAttribute('alt') || '';
+          return '![' + alt + '](' + src + ')\n\n';
+        }
         case 'p': case 'div':
           // callout 提示框：保留为原始 HTML（marked 默认透传）
           if (tag === 'div' && node.classList && node.classList.contains('callout')) {
@@ -273,6 +279,28 @@
     return r.json();
   }
 
+  // 上传二进制内容（图片）到仓库：直接 PUT base64（不经过文本 b64encode）
+  async function githubUploadBinary(base64Content, path, message) {
+    const token = getAdminToken();
+    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + path;
+    const r = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message, content: base64Content, branch: CONFIG.branch })
+    });
+    if (!r.ok) {
+      let detail = '';
+      try { const e = await r.json(); detail = e.message || (e.errors && e.errors[0] && e.errors[0].message) || ''; } catch (e) {}
+      throw new Error('HTTP ' + r.status + (detail ? ' - ' + detail : ''));
+    }
+    return r.json();
+  }
+
+  // 文章配图目录：posts/<id>-assets/
+  function assetDir(id) {
+    return CONFIG.postsDir + '/' + encodeURIComponent(id) + '-assets';
+  }
+
   // 单篇文章的完整路径（posts/<id>.md）
   function postPath(id) {
     return CONFIG.postsDir + '/' + encodeURIComponent(id) + '.md';
@@ -326,6 +354,13 @@
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
+        // 先清理配图目录，避免删除文章后留下孤儿图片
+        try {
+          const assets = await githubListDir(assetDir(id));
+          for (const f of assets.filter(x => x.type === 'file')) {
+            try { await githubDeleteFile(assetDir(id) + '/' + f.name, f.sha, '删除图片: ' + f.name); } catch (e) {}
+          }
+        } catch (e) {}
         const file = await githubGetFile(postPath(id));
         await githubDeleteFile(postPath(id), file.sha, '删除文章: ' + id);
         ARTICLES = ARTICLES.filter(a => a.id !== id);
@@ -610,6 +645,8 @@
   function renderWrite(editId) {
     const editing = editId ? getArticle(editId) : null;
     const a = editing || { id: '', title: '', category: '技术', tags: [], date: new Date().toISOString().slice(0, 10), excerpt: '', content: '', emoji: '📝', cover: 'ocean' };
+    // 提前生成文章 id（新建时），使图片可在保存前上传到 posts/<id>-assets/
+    const currentId = editing ? editing.id : genId('post');
 
     const coverOpts = Object.keys(COVERS).map(k =>
       `<option value="${k}" ${k === a.cover ? 'selected' : ''}>${k}</option>`
@@ -673,6 +710,7 @@
               <button type="button" data-cmd="insertUnorderedList" title="无序列表">• 列表</button>
               <button type="button" data-cmd="insertOrderedList" title="有序列表">1. 列表</button>
               <button type="button" data-cmd="createLink" title="插入链接">🔗</button>
+              <button type="button" data-cmd="image" title="插入图片（也可直接粘贴截图）">🖼️ 图片</button>
               <button type="button" data-cmd="codeBlock" title="代码块">{ }</button>
               <span class="tb-sep"></span>
               <button type="button" data-cmd="sourceToggle" title="切换源码模式" id="srcToggle">{'</>'} 源码</button>
@@ -695,8 +733,10 @@
                 <button type="button" data-block="ul">• 无序列表</button>
                 <button type="button" data-block="ol">1. 有序列表</button>
                 <button type="button" data-block="pre">{} 代码块</button>
+                <button type="button" data-block="image">🖼️ 图片</button>
                 <button type="button" data-block="hr">―― 分隔线</button>
               </div>
+              <input type="file" id="edImageInput" accept="image/*" multiple hidden />
             </div>
 
             <div class="ed-actions">
@@ -754,11 +794,121 @@
     edEl.addEventListener('input', autoDraft);
     srcEl.addEventListener('input', autoDraft);
 
-    // 粘贴：转纯文本，去除外来格式
+    // ====== 图片上传（压缩 → base64 → GitHub API）======
+    // 用 canvas 限制最大边并压缩，避免大图撑爆仓库与 API
+    function fileToCompressedDataURL(file, maxEdge, quality) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > maxEdge || h > maxEdge) {
+              const scale = maxEdge / Math.max(w, h);
+              w = Math.round(w * scale); h = Math.round(h * scale);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const type = (file.type === 'image/png') ? 'image/png' : 'image/jpeg';
+            resolve(canvas.toDataURL(type, quality));
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function uploadImageFile(file) {
+      const id = currentId;
+      let dataUrl, ext;
+      if (file.type === 'image/gif') {
+        // gif 动图不压缩，直接上传原文件，保留动画
+        dataUrl = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file);
+        });
+        ext = 'gif';
+      } else {
+        dataUrl = await fileToCompressedDataURL(file, 1600, 0.85);
+        ext = (file.type === 'image/png') ? 'png' : 'jpg';
+      }
+      const base64 = String(dataUrl).split(',')[1];
+      const name = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7) + '.' + ext;
+      const path = assetDir(id) + '/' + name;
+      await githubUploadBinary(base64, path, '上传图片: ' + name);
+      return './' + id + '-assets/' + name; // 相对路径，仓库内自包含
+    }
+
+    // 上传并在光标处插入 <img>（先占位，完成替换，失败回滚）
+    async function uploadAndInsert(file) {
+      if (!isAdmin()) { alert('请先登录作者账号再插入图片。'); location.hash = '#/admin'; return; }
+      if (!file || !file.type || !file.type.startsWith('image/')) return;
+      const sel = window.getSelection();
+      const range = (sel && sel.rangeCount) ? sel.getRangeAt(0) : null;
+      const placeholder = document.createElement('img');
+      placeholder.setAttribute('data-uploading', '1');
+      placeholder.className = 'ed-img-uploading';
+      placeholder.alt = '图片上传中…';
+      if (range) range.insertNode(placeholder); else edEl.appendChild(placeholder);
+      try {
+        const rel = await uploadImageFile(file);
+        placeholder.removeAttribute('data-uploading');
+        placeholder.className = '';
+        placeholder.src = rel;
+        placeholder.alt = file.name || '图片';
+      } catch (err) {
+        if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
+        alert('图片上传失败：' + (err && err.message || err));
+      }
+      autoDraft();
+    }
+
+    function openImagePicker() {
+      const input = document.getElementById('edImageInput');
+      if (input) input.click();
+    }
+
+    // 文件选择框选中图片后上传
+    const edImageInputEl = document.getElementById('edImageInput');
+    if (edImageInputEl) {
+      edImageInputEl.addEventListener('change', e => {
+        const files = e.target.files;
+        if (files) { for (const f of files) uploadAndInsert(f); }
+        e.target.value = ''; // 允许重复选择同一文件
+      });
+    }
+
+    // 粘贴：图片自动上传，否则转纯文本去除外来格式
     edEl.addEventListener('paste', e => {
+      const cd = e.clipboardData || window.clipboardData;
+      if (cd && cd.items) {
+        for (const it of cd.items) {
+          if (it.type && it.type.startsWith('image/')) {
+            const f = it.getAsFile();
+            if (f) { e.preventDefault(); uploadAndInsert(f); return; }
+          }
+        }
+      }
       e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      const text = cd ? cd.getData('text/plain') : '';
       document.execCommand('insertText', false, text);
+    });
+
+    // 拖拽图片上传
+    edEl.addEventListener('dragover', e => {
+      if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault();
+    });
+    edEl.addEventListener('drop', e => {
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      let handled = false;
+      for (const f of files) {
+        if (f.type && f.type.startsWith('image/')) { handled = true; uploadAndInsert(f); }
+      }
+      if (handled) e.preventDefault();
     });
 
     // emoji 选择
@@ -804,6 +954,8 @@
       if (sourceMode && cmd !== 'sourceToggle') return;
 
       edEl.focus();
+
+      if (cmd === 'image') { openImagePicker(); return; }
 
       if (cmd === 'sourceToggle') {
         if (sourceMode) {
@@ -985,6 +1137,8 @@
           const nr = document.createRange();
           nr.selectNodeContents(div); nr.collapse(false);
           sel.removeAllRanges(); sel.addRange(nr);
+        } else if (type === 'image') {
+          openImagePicker();
         }
         closeBlockMenu();
         autoDraft();
@@ -1008,7 +1162,7 @@
       const tags = tagsRaw.split(/[,，、]/).map(t => t.trim()).filter(Boolean);
       const cover = document.getElementById('edCover').value;
       const article = {
-        id: editing ? editing.id : genId(title),
+        id: currentId,
         title: title,
         category: category,
         tags: tags.length ? tags : ['未分类'],

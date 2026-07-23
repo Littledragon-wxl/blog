@@ -510,6 +510,9 @@ ul, ol { padding-left: 1.4em; }
   font-size: inherit;
 }
 .markdown-body img { border-radius: var(--radius-sm); margin: 1.5em auto; box-shadow: var(--shadow-sm); }
+.ed-wysiwyg img { max-width: 100%; border-radius: var(--radius-sm); margin: .8em 0; }
+.ed-img-uploading { width: 140px; height: 90px; background: var(--bg-soft); border: 1px dashed var(--border); border-radius: var(--radius-sm); opacity: .7; animation: imgPulse 1.1s ease-in-out infinite; }
+@keyframes imgPulse { 0%,100% { opacity: .4; } 50% { opacity: .85; } }
 .markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
 .markdown-body table {
   width: 100%;
