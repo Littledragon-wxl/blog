@@ -193,6 +193,40 @@
     ARTICLES = list;
   }
 
+  // 提交后从 GitHub 重新拉取最新文章列表，确保本地与线上一致
+  async function refreshArticlesFromGitHub() {
+    try {
+      const file = await githubGetFile(CONFIG.postsPath);
+      const content = decodeURIComponent(escape(atob(file.content.replace(/\s/g, ''))));
+      const remote = JSON.parse(content);
+      const map = {};
+      ARTICLES.forEach(a => { map[a.id] = a; });
+      remote.forEach(a => { if (!map[a.id]) map[a.id] = a; });
+      ARTICLES = Object.values(map);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 保存成功后显示「发布成功」页面（不自动跳转，避免部署延迟导致文章找不到）
+  function showPublishSuccess(article) {
+    app.innerHTML = `
+      <div class="container">
+        <div class="publish-success fade-in">
+          <div class="ps-icon">✅</div>
+          <h2>发布成功！</h2>
+          <p>《${escapeHtml(article.title)}》已提交到 GitHub，等待部署完成后访客即可看到。</p>
+          <div class="ps-actions">
+            <a href="#/post/${encodeURIComponent(article.id)}" class="ed-btn ed-btn-primary">查看文章</a>
+            <a href="#/write" class="ed-btn ed-btn-ghost">再写一篇</a>
+            <a href="#/" class="ed-btn ed-btn-ghost">返回首页</a>
+          </div>
+          <p class="ps-note">提示：GitHub Pages 部署约需 1 分钟。若点击「查看文章」显示不存在，请稍等片刻再试，或直接访问线上首页。</p>
+        </div>
+      </div>`;
+  }
+
   // 发布站点信息 —— 提交 js/site.json
   async function publishSite(newSite) {
     const file = await githubGetFile(CONFIG.sitePath);
@@ -831,8 +865,11 @@
       try {
         await publishArticle(article);
         try { localStorage.removeItem(draftKey); } catch (e) {}
-        statusEl.textContent = '✅ 已发布！约 1 分钟后线上更新。';
-        setTimeout(() => { location.hash = '#/post/' + article.id; }, 800);
+        statusEl.textContent = '✅ 已发布！正在刷新本地数据…';
+        // 提交后从 GitHub 重新拉取，确保本地与线上一致
+        await refreshArticlesFromGitHub();
+        // 显示成功页面（不自动跳转，避免部署延迟导致文章找不到）
+        showPublishSuccess(article);
       } catch (err) {
         statusEl.textContent = '❌ 发布失败：' + err.message;
         saveBtn.disabled = false;
