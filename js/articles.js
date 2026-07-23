@@ -1,5 +1,5 @@
 /* ====== 博客配置 ======
- * 文章数据：js/posts.json（运行时 fetch 加载，可在线编辑发布）
+ * 文章数据：每篇文章一个文件，存于 posts/ 目录（posts/<id>.md，Markdown + front matter）
  * 站点信息：js/site.json（运行时 fetch 加载，可在线编辑发布）
  * 本文件只保留：GitHub 仓库配置、封面配色板
  */
@@ -9,7 +9,7 @@ const CONFIG = {
   owner: "Littledragon-wxl",
   repo: "blog",
   branch: "main",
-  postsPath: "js/posts.json",
+  postsDir: "posts",          // 文章目录：每篇一个 <id>.md 文件
   sitePath: "js/site.json"
 };
 

@@ -13,7 +13,7 @@
     marked.setOptions({ breaks: true, gfm: true });
   }
 
-  // 文章数据（运行时从 js/posts.json 加载）
+  // 文章数据（运行时从 posts/ 目录逐篇加载，每篇一个 <id>.md 文件）
   let ARTICLES = [];
 
   // 站点配置（运行时从 js/site.json 加载）
@@ -44,6 +44,64 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
+  }
+
+  // ====== 文章文件（posts/<id>.md）的 front matter 解析与构建 ======
+  // 解析：--- \n key: value \n --- \n 正文
+  function parseFrontmatter(md) {
+    md = String(md || '').replace(/^﻿/, '');
+    const m = md.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+    if (!m) return { meta: {}, body: md };
+    const meta = {};
+    m[1].split('\n').forEach(line => {
+      const i = line.indexOf(':');
+      if (i < 0) return;
+      const k = line.slice(0, i).trim();
+      if (!k) return;
+      let v = line.slice(i + 1).trim();
+      if ((v[0] === '"' && v[v.length - 1] === '"') || (v[0] === "'" && v[v.length - 1] === "'")) v = v.slice(1, -1);
+      if (v[0] === '[' && v[v.length - 1] === ']') {
+        v = v.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+      }
+      meta[k] = v;
+    });
+    return { meta, body: m[2] };
+  }
+
+  // 构建：把文章对象拼成 <id>.md 文本内容
+  function buildMarkdown(post) {
+    const tags = (post.tags && post.tags.length) ? post.tags : ['未分类'];
+    const lines = [
+      '---',
+      'id: ' + (post.id || ''),
+      'title: ' + (post.title || ''),
+      'emoji: ' + (post.emoji || '📝'),
+      'date: ' + (post.date || ''),
+      'category: ' + (post.category || '未分类'),
+      'tags: [' + tags.join(', ') + ']',
+      'cover: ' + (post.cover || ''),
+      'excerpt: ' + (post.excerpt || '').replace(/\r?\n/g, ' '),
+      '---',
+      '',
+      post.content || ''
+    ];
+    return lines.join('\n');
+  }
+
+  // 由 front matter + 正文 还原成文章对象（与 posts.json 字段兼容）
+  function postFromParsed(meta, body) {
+    const id = meta.id || '';
+    return {
+      id: id,
+      title: meta.title || id,
+      emoji: meta.emoji || '📝',
+      date: meta.date || '',
+      category: meta.category || '未分类',
+      tags: Array.isArray(meta.tags) ? meta.tags : (meta.tags ? [meta.tags] : ['未分类']),
+      cover: meta.cover || '',
+      excerpt: meta.excerpt || makeExcerpt(body),
+      content: body
+    };
   }
 
   // ====== HTML → Markdown 转换器（富文本编辑器内容转回 markdown 存储）======
@@ -174,48 +232,102 @@
     return r.json();
   }
 
-  // 发布文章（新增或更新）—— 提交到 GitHub
-  async function publishArticle(article) {
-    const file = await githubGetFile(CONFIG.postsPath);
-    let list = ARTICLES.slice();
-    const idx = list.findIndex(a => a.id === article.id);
-    const isUpdate = idx >= 0;
-    if (isUpdate) list[idx] = article; else list.unshift(article);
-    await githubCommitFile(JSON.stringify(list, null, 2), file.sha, CONFIG.postsPath, (isUpdate ? '更新文章: ' : '发布新文章: ') + article.title);
-    if (isUpdate) ARTICLES[idx] = article; else ARTICLES.unshift(article);
+  // 列出 posts/ 目录下的文件（无需 token，公开仓库即可）
+  async function githubListDir(path) {
+    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + path + '?ref=' + CONFIG.branch;
+    const r = await fetch(url, { headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    return Array.isArray(data) ? data : [];
   }
 
-  // 删除文章 —— 提交到 GitHub（遇 409 sha 冲突自动重试一次）
-  async function deleteArticlePub(id) {
+  // 删除单个文件（DELETE 方法，需先拿 sha）
+  async function githubDeleteFile(path, sha, message) {
+    const token = getAdminToken();
+    const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + path;
+    const r = await fetch(url, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: message, sha: sha, branch: CONFIG.branch })
+    });
+    if (!r.ok) {
+      let detail = '';
+      try { const e = await r.json(); detail = e.message || (e.errors && e.errors[0] && e.errors[0].message) || ''; } catch (e) {}
+      throw new Error('HTTP ' + r.status + (detail ? ' - ' + detail : ''));
+    }
+    return r.json();
+  }
+
+  // 单篇文章的完整路径（posts/<id>.md）
+  function postPath(id) {
+    return CONFIG.postsDir + '/' + encodeURIComponent(id) + '.md';
+  }
+
+  // 从 posts/ 目录加载所有文章（纯目录式，无共享文件）
+  async function loadPosts() {
+    const entries = await githubListDir(CONFIG.postsDir);
+    const mdFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.md'));
+    const articles = [];
+    for (const f of mdFiles) {
+      try {
+        const raw = await fetch(f.download_url, { cache: 'no-store' });
+        if (!raw.ok) continue;
+        const text = await raw.text();
+        const { meta, body } = parseFrontmatter(text);
+        if (!meta.id) meta.id = decodeURIComponent(f.name.replace(/\.md$/, ''));
+        const post = postFromParsed(meta, body);
+        if (post.id) articles.push(post);
+      } catch (e) { /* 单篇出错不影响其他 */ }
+    }
+    articles.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    try { localStorage.setItem('blog-posts-cache', JSON.stringify({ ts: Date.now(), articles })); } catch (e) {}
+    return articles;
+  }
+
+  // 按需取单篇（深链 / 刷新场景，内存里没有时直接拉 raw）
+  async function fetchPostFile(id) {
+    const url = 'https://raw.githubusercontent.com/' + CONFIG.owner + '/' + CONFIG.repo + '/' + CONFIG.branch + '/' + postPath(id);
+    const r = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return null;
+    const text = await r.text();
+    const { meta, body } = parseFrontmatter(text);
+    if (!meta.id) meta.id = id;
+    return postFromParsed(meta, body);
+  }
+
+  // 发布文章（新增或更新）—— 只写 posts/<id>.md 这一个文件
+  async function publishPost(article) {
+    const path = postPath(article.id);
+    const content = buildMarkdown(article);
+    let sha = null;
+    try { const f = await githubGetFile(path); sha = f.sha; } catch (e) { sha = null; }
+    await githubCommitFile(content, sha, path, (sha ? '更新文章: ' : '发布新文章: ') + article.title);
+    const idx = ARTICLES.findIndex(a => a.id === article.id);
+    if (idx >= 0) ARTICLES[idx] = article; else ARTICLES.unshift(article);
+  }
+
+  // 删除文章 —— 只 DELETE posts/<id>.md 这一个文件（彻底无共享文件冲突）
+  async function deletePost(id) {
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const file = await githubGetFile(CONFIG.postsPath);
-        const target = ARTICLES.find(a => a.id === id);
-        const list = ARTICLES.filter(a => a.id !== id);
-        await githubCommitFile(JSON.stringify(list, null, 2), file.sha, CONFIG.postsPath, '删除文章: ' + (target ? target.title : id));
-        ARTICLES = list;
+        const file = await githubGetFile(postPath(id));
+        await githubDeleteFile(postPath(id), file.sha, '删除文章: ' + id);
+        ARTICLES = ARTICLES.filter(a => a.id !== id);
         return;
       } catch (err) {
         lastErr = err;
-        // 409 = sha 冲突（文件已被改动），重新拉最新 sha 再试一次
-        if (attempt === 0 && String(err.message).includes('409')) continue;
+        if (attempt === 0 && String(err.message).includes('409')) continue; // sha 冲突重试一次
         throw err;
       }
     }
     throw lastErr;
   }
 
-  // 提交后从 GitHub 重新拉取最新文章列表，确保本地与线上一致
+  // 提交后重新从 GitHub 拉取最新文章（列目录），确保本地与线上一致
   async function refreshArticlesFromGitHub() {
     try {
-      const file = await githubGetFile(CONFIG.postsPath);
-      const content = decodeURIComponent(escape(atob(file.content.replace(/\s/g, ''))));
-      const remote = JSON.parse(content);
-      const map = {};
-      ARTICLES.forEach(a => { map[a.id] = a; });
-      remote.forEach(a => { if (!map[a.id]) map[a.id] = a; });
-      ARTICLES = Object.values(map);
+      ARTICLES = await loadPosts();
       return true;
     } catch (e) {
       return false;
@@ -374,8 +486,15 @@
   }
 
   // ====== 渲染：文章详情 ======
-  function renderPost(id) {
-    const a = getArticle(id);
+  async function renderPost(id) {
+    let a = getArticle(id);
+    if (!a) {
+      // 内存里没有，可能是深链/刷新场景，按需取单篇
+      try {
+        const post = await fetchPostFile(id);
+        if (post) { a = post; if (!ARTICLES.find(x => x.id === id)) ARTICLES.unshift(post); }
+      } catch (e) {}
+    }
     if (!a) {
       app.innerHTML = `<div class="container"><div class="empty-state"><div class="es-icon">🔍</div><h3>文章不存在</h3><p>可能已被移除或链接有误</p><p style="margin-top:18px"><a href="#/">← 返回首页</a></p></div></div>`;
       return;
@@ -432,7 +551,7 @@
         delBtn.disabled = true;
         delBtn.textContent = '⏳ 删除中…';
         try {
-          await deleteArticlePub(a.id);
+          await deletePost(a.id);
           // 本地立即生效：内存已更新，直接重渲染首页（不依赖部署延迟）
           alert('✅ 文章已删除。\n\n本地立即生效；线上约 1 分钟后同步（GitHub Pages 部署需要一点时间）。');
           location.hash = '#/';
@@ -889,7 +1008,7 @@
       saveBtn.textContent = '⏳ 发布中…';
       statusEl.textContent = '正在提交到 GitHub…';
       try {
-        await publishArticle(article);
+        await publishPost(article);
         try { localStorage.removeItem(draftKey); } catch (e) {}
         statusEl.textContent = '✅ 已发布！正在刷新本地数据…';
         // 提交后从 GitHub 重新拉取，确保本地与线上一致
@@ -1191,18 +1310,38 @@
 
   // 启动：先加载文章和站点数据，再启动路由
   async function init() {
+    // 站点信息（仍用 js/site.json）
+    let siteOk = false;
     try {
-      const [pr, sr] = await Promise.all([
-        fetch('js/posts.json', { cache: 'no-store' }),
-        fetch('js/site.json', { cache: 'no-store' })
-      ]);
-      if (!pr.ok) { app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>文章加载失败</h3><p>HTTP ' + pr.status + '</p></div></div>'; return; }
-      if (!sr.ok) { app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>站点信息加载失败</h3><p>HTTP ' + sr.status + '</p></div></div>'; return; }
-      ARTICLES = await pr.json();
-      SITE = await sr.json();
-    } catch (e) {
-      app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📡</div><h3>无法加载数据</h3><p>请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
+      const sr = await fetch('js/site.json', { cache: 'no-store' });
+      if (sr.ok) { SITE = await sr.json(); siteOk = true; }
+    } catch (e) {}
+    if (!siteOk) {
+      app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>站点信息加载失败</h3><p>请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
       return;
+    }
+    // 文章：从 posts/ 目录加载（带缓存兜底）
+    try {
+      ARTICLES = await loadPosts();
+    } catch (e) {
+      try {
+        const c = JSON.parse(localStorage.getItem('blog-posts-cache') || 'null');
+        if (c && c.articles && c.articles.length) {
+          ARTICLES = c.articles;
+        } else {
+          throw e;
+        }
+      } catch (e2) {
+        // 最后的兜底：本地的 js/posts.json（迁移备份），便于本地预览 / API 限流时仍可读
+        try {
+          const pr = await fetch('js/posts.json', { cache: 'no-store' });
+          if (pr.ok) { ARTICLES = await pr.json(); }
+          else throw e2;
+        } catch (e3) {
+          app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📡</div><h3>文章加载失败</h3><p>' + String(e && e.message || '') + '</p><p style="margin-top:10px">请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
+          return;
+        }
+      }
     }
     window.addEventListener('hashchange', router);
     router();
