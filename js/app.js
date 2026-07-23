@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260724a';
+  const APP_VERSION = '20260724b';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -160,9 +160,10 @@
         case 'br': return '\n';
         case 'img': {
           const src = node.getAttribute('src') || '';
-          if (!src || node.getAttribute('data-uploading')) return '';
+          const rel = node.getAttribute('data-rel') || src;
+          if (!rel || node.getAttribute('data-uploading')) return '';
           const alt = node.getAttribute('alt') || '';
-          return '![' + alt + '](' + src + ')\n\n';
+          return '![' + alt + '](' + rel + ')\n\n';
         }
         case 'p': case 'div':
           // callout 提示框：保留为原始 HTML（marked 默认透传）
@@ -283,17 +284,24 @@
   async function githubUploadBinary(base64Content, path, message) {
     const token = getAdminToken();
     const url = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/contents/' + path;
-    const r = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: message, content: base64Content, branch: CONFIG.branch })
-    });
-    if (!r.ok) {
-      let detail = '';
-      try { const e = await r.json(); detail = e.message || (e.errors && e.errors[0] && e.errors[0].message) || ''; } catch (e) {}
-      throw new Error('HTTP ' + r.status + (detail ? ' - ' + detail : ''));
+    let lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetch(url, {
+          method: 'PUT',
+          headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: message, content: base64Content, branch: CONFIG.branch })
+        });
+        if (r.ok) return r.json();
+        if (r.status >= 400 && r.status < 500) {
+          let detail = '';
+          try { const e = await r.json(); detail = e.message || (e.errors && e.errors[0] && e.errors[0].message) || ''; } catch (e) {}
+          throw new Error('HTTP ' + r.status + (detail ? ' - ' + detail : ''));
+        }
+        lastErr = new Error('HTTP ' + r.status + '（服务器临时错误，重试中…）');
+      } catch (e) { lastErr = e; }
     }
-    return r.json();
+    throw lastErr || new Error('图片上传失败');
   }
 
   // 文章配图目录：posts/<id>-assets/
@@ -835,11 +843,24 @@
         dataUrl = await fileToCompressedDataURL(file, 1600, 0.85);
         ext = (file.type === 'image/png') ? 'png' : 'jpg';
       }
-      const base64 = String(dataUrl).split(',')[1];
+      let base64 = String(dataUrl).split(',')[1];
+      // 大小保护：GitHub API 对单文件有上限，超限再压一轮（1280/0.6 → 1024/0.5）
+      if (base64.length > 900000) {
+        dataUrl = await fileToCompressedDataURL(file, 1280, 0.6);
+        base64 = String(dataUrl).split(',')[1];
+      }
+      if (base64.length > 900000) {
+        dataUrl = await fileToCompressedDataURL(file, 1024, 0.5);
+        base64 = String(dataUrl).split(',')[1];
+      }
       const name = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7) + '.' + ext;
       const path = assetDir(id) + '/' + name;
       await githubUploadBinary(base64, path, '上传图片: ' + name);
-      return './' + id + '-assets/' + name; // 相对路径，仓库内自包含
+      // 存储用仓库内相对路径（部署后自包含）；编辑器预览用 raw 直链，免等 Pages 部署
+      return {
+        rel: './' + CONFIG.postsDir + '/' + id + '-assets/' + name,
+        raw: 'https://raw.githubusercontent.com/' + CONFIG.owner + '/' + CONFIG.repo + '/' + CONFIG.branch + '/' + assetDir(id) + '/' + name
+      };
     }
 
     // 上传并在光标处插入 <img>（先占位，完成替换，失败回滚）
@@ -854,14 +875,17 @@
       placeholder.alt = '图片上传中…';
       if (range) range.insertNode(placeholder); else edEl.appendChild(placeholder);
       try {
-        const rel = await uploadImageFile(file);
+        const res = await uploadImageFile(file);
         placeholder.removeAttribute('data-uploading');
         placeholder.className = '';
-        placeholder.src = rel;
+        placeholder.setAttribute('data-rel', res.rel);  // 存储用相对路径
+        placeholder.src = res.raw;                      // 编辑器内即时预览（raw 直链，免等部署）
         placeholder.alt = file.name || '图片';
       } catch (err) {
         if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
-        alert('图片上传失败：' + (err && err.message || err));
+        const msg = (err && err.message) || String(err);
+        const hint = /401/.test(msg) ? '（token 可能已失效，请在右上角重新登录作者账号）' : '';
+        alert('图片上传失败：' + msg + hint);
       }
       autoDraft();
     }
