@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260725b';
+  const APP_VERSION = '20260725c';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -401,6 +401,14 @@
         const file = await githubGetFile(postPath(id));
         await githubDeleteFile(postPath(id), file.sha, '删除文章: ' + id);
         ARTICLES = ARTICLES.filter(a => a.id !== id);
+        // 同步清理本地文章缓存，避免刷新后匿名 API 限流回退到旧缓存导致文章“复活”
+        try {
+          const c = JSON.parse(localStorage.getItem('blog-posts-cache') || 'null');
+          if (c && c.articles) {
+            c.articles = c.articles.filter(a => a.id !== id);
+            localStorage.setItem('blog-posts-cache', JSON.stringify(c));
+          }
+        } catch (e) {}
         return;
       } catch (err) {
         lastErr = err;
@@ -639,17 +647,24 @@
         delBtn.textContent = '⏳ 删除中…';
         try {
           await deletePost(a.id);
-          // 本地立即生效：内存已更新，直接重渲染首页（不依赖部署延迟）
-          alert('✅ 文章已删除。\n\n本地立即生效；线上约 1 分钟后同步（GitHub Pages 部署需要一点时间）。');
+          // 删除后从 GitHub 重新拉取，确保内存与缓存都和线上一致（避免旧缓存复活）
+          try { await refreshArticlesFromGitHub(); } catch (e) {}
+          alert('✅ 文章已删除。\n\n本地已立即生效；线上约 1 分钟后同步（GitHub Pages 部署需要一点时间）。');
           location.hash = '#/';
         } catch (err) {
-          const msg = String(err.message || '');
+          console.error('[deletePost] 删除失败：', err);
+          const msg = String(err && err.message || err);
           if (msg.includes('401') || msg.includes('403') || msg.includes('Bad credentials')) {
             alert('删除失败：Token 已失效或无权限。\n请重新登录 #/admin 并输入有效 token。');
             adminLogout();
             location.hash = '#/admin';
+          } else if (msg.includes('404')) {
+            // 文件已不存在：多半是已经被删，直接同步本地状态
+            try { ARTICLES = ARTICLES.filter(x => x.id !== a.id); await refreshArticlesFromGitHub(); } catch (e) {}
+            alert('这篇文章在 GitHub 上已不存在（可能已被删除）。\n页面将刷新以同步最新状态。');
+            location.hash = '#/';
           } else {
-            alert('删除失败（' + msg + '）\n\n请把上面括号里的错误信息发给我，我据此定位。');
+            alert('删除失败（' + msg + '）\n\n可把括号里的错误信息发我，我据此定位。');
           }
           delBtn.disabled = false;
           delBtn.textContent = '🗑 删除';
