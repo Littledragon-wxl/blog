@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260725a';
+  const APP_VERSION = '20260725b';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -61,10 +61,12 @@
     }[c]));
   }
 
-  // 图片直链基础（GitHub raw），用于文章页/编辑器预览，绕过 Pages 对 posts/ 目录的延迟/编码问题
-  const RAW_BASE = 'https://raw.githubusercontent.com/' + CONFIG.owner + '/' + CONFIG.repo + '/' + CONFIG.branch + '/';
+  // 图片直链基础（jsDelivr CDN）。注意：raw.githubusercontent.com 的响应头带
+  // Content-Security-Policy: sandbox，浏览器会拒绝把它的图片渲染到页面里，
+  // 所以改用 jsDelivr，无此限制且带 CORS、加载更快。
+  const RAW_BASE = 'https://cdn.jsdelivr.net/gh/' + CONFIG.owner + '/' + CONFIG.repo + '@' + CONFIG.branch + '/';
 
-  // 把 md 中相对路径的图片转成 raw 直链，确保文章页和编辑器能立即显示
+  // 把 md 中相对路径的图片转成 jsDelivr 直链，确保文章页和编辑器能立即显示
   function resolveImgSrc(md, id) {
     if (!md || !id) return md;
     const safeId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -80,7 +82,7 @@
     return md;
   }
 
-  // 把 raw 直链转回相对路径，保持 md 文件自包含
+  // 把 jsDelivr 直链转回相对路径，保持 md 文件自包含
   function rawToRel(src, id) {
     if (!src || !id || src.indexOf(RAW_BASE) !== 0) return src;
     let rel = src.slice(RAW_BASE.length);
@@ -883,10 +885,10 @@
       const name = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7) + '.' + ext;
       const path = assetDir(id) + '/' + name;
       await githubUploadBinary(base64, path, '上传图片: ' + name);
-      // 存储用仓库内相对路径（部署后自包含）；编辑器预览用 raw 直链，免等 Pages 部署
+      // 存储用仓库内相对路径（部署后自包含）；编辑器预览用 jsDelivr 直链，免等 Pages 部署、无 CSP 限制
       return {
         rel: './' + CONFIG.postsDir + '/' + id + '-assets/' + name,
-        raw: 'https://raw.githubusercontent.com/' + CONFIG.owner + '/' + CONFIG.repo + '/' + CONFIG.branch + '/' + assetDir(id) + '/' + name
+        raw: RAW_BASE + assetDir(id) + '/' + name
       };
     }
 
