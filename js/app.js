@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260724b';
+  const APP_VERSION = '20260725a';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -59,6 +59,33 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
+  }
+
+  // 图片直链基础（GitHub raw），用于文章页/编辑器预览，绕过 Pages 对 posts/ 目录的延迟/编码问题
+  const RAW_BASE = 'https://raw.githubusercontent.com/' + CONFIG.owner + '/' + CONFIG.repo + '/' + CONFIG.branch + '/';
+
+  // 把 md 中相对路径的图片转成 raw 直链，确保文章页和编辑器能立即显示
+  function resolveImgSrc(md, id) {
+    if (!md || !id) return md;
+    const safeId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const toRaw = (m, alt, prefix, name) => {
+      const raw = RAW_BASE + CONFIG.postsDir + '/' + encodeURIComponent(id) + '-assets/' + name;
+      return '![' + alt + '](' + raw + ')';
+    };
+    // 支持 ./<id>-assets/... 与 ./posts/<id>-assets/... 两种写法
+    const re1 = new RegExp('!\\[([^\\]]*)\\]\\((\\.?/?)' + safeId + '-assets/([^)]+)\\)', 'g');
+    const re2 = new RegExp('!\\[([^\\]]*)\\]\\((\\.?/?)' + CONFIG.postsDir + '/' + safeId + '-assets/([^)]+)\\)', 'g');
+    md = md.replace(re1, toRaw);
+    md = md.replace(re2, toRaw);
+    return md;
+  }
+
+  // 把 raw 直链转回相对路径，保持 md 文件自包含
+  function rawToRel(src, id) {
+    if (!src || !id || src.indexOf(RAW_BASE) !== 0) return src;
+    let rel = src.slice(RAW_BASE.length);
+    try { rel = decodeURIComponent(rel); } catch (e) {}
+    return './' + rel;
   }
 
   // ====== 文章文件（posts/<id>.md）的 front matter 解析与构建 ======
@@ -120,7 +147,7 @@
   }
 
   // ====== HTML → Markdown 转换器（富文本编辑器内容转回 markdown 存储）======
-  function htmlToMarkdown(html) {
+  function htmlToMarkdown(html, articleId) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     function walk(node) {
       if (!node) return '';
@@ -160,7 +187,7 @@
         case 'br': return '\n';
         case 'img': {
           const src = node.getAttribute('src') || '';
-          const rel = node.getAttribute('data-rel') || src;
+          const rel = node.getAttribute('data-rel') || rawToRel(src, articleId);
           if (!rel || node.getAttribute('data-uploading')) return '';
           const alt = node.getAttribute('alt') || '';
           return '![' + alt + '](' + rel + ')\n\n';
@@ -558,7 +585,7 @@
       return;
     }
 
-    const html = marked.parse(a.content);
+    const html = marked.parse(resolveImgSrc(a.content, a.id));
     const related = getAllArticles().filter(x => x.id !== id && x.tags.some(t => a.tags.includes(t))).slice(0, 2);
     const admin = isAdmin();
 
@@ -767,12 +794,12 @@
     // 获取当前 markdown
     function getMarkdown() {
       if (sourceMode) return srcEl.value;
-      return htmlToMarkdown(edEl.innerHTML);
+      return htmlToMarkdown(edEl.innerHTML, currentId);
     }
 
-    // 把 markdown 渲染进富文本
+    // 把 markdown 渲染进富文本（图片转 raw 直链，编辑器内即时可预览）
     function loadToWysiwyg(md) {
-      edEl.innerHTML = marked.parse(md || '');
+      edEl.innerHTML = marked.parse(resolveImgSrc(md || '', currentId));
     }
 
     // 初始载入
