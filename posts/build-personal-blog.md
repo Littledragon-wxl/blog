@@ -33,7 +33,7 @@ Markdown 渲染借助 `marked.js`（通过 CDN 引入），仅此而已。
 
 没有 React Router，没有 Vue Router，就用最原始的 **hash 路由**：
 
-```javascript
+```
 window.addEventListener('hashchange', router);
 
 function router() {
@@ -52,7 +52,7 @@ function router() {
 
 我把所有文章存在一个 JS 数组里，每篇包含元信息和 Markdown 正文：
 
-```javascript
+```
 const ARTICLES = [
   {
     id: "my-post",
@@ -72,12 +72,25 @@ const ARTICLES = [
 
 因为是纯静态文件，部署选择极其自由：
 
-| 平台 | 特点 | 适合 |
-| --- | --- | --- |
-| GitHub Pages | 免费、绑定仓库 | 开发者 |
-| Netlify | 拖拽上传、自动 HTTPS | 快速上线 |
-| Vercel | 边缘网络、速度极快 | 追求性能 |
-| 任意虚拟主机 | 传统但稳妥 | 已有服务器 |
+平台
+特点
+适合
+
+GitHub Pages
+免费、绑定仓库
+开发者
+
+Netlify
+拖拽上传、自动 HTTPS
+快速上线
+
+Vercel
+边缘网络、速度极快
+追求性能
+
+任意虚拟主机
+传统但稳妥
+已有服务器
 
 我推荐 **Netlify**：把文件夹拖进去，30 秒拿到一个带 HTTPS 的网址。
 
@@ -92,3 +105,7 @@ const ARTICLES = [
 这个博客本身就是一个活生生的例子——你正在看的页面就是它。代码不多，但每一行都是我亲手敲下的。
 
 **技术不该是炫技，而是恰好够用。**
+
+**![屏幕截图 2026-07-04 103018.png](./posts/build-personal-blog-assets/mrz73yrc-i8n3d.png)
+
+**
