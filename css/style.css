@@ -1198,8 +1198,293 @@ ul, ol { padding-left: 1.4em; }
 
 /* ============================================================
    双频道主题：日常(daily, 默认) / 开发(dev)
-   daily = 明亮活泼暖色调；dev = GitHub 黑白极简等宽
+   daily = 摄影集/杂志风（大留白、衬线标题、克制暖灰+橙点缀）
+   dev = GitHub 黑白极简等宽
    ============================================================ */
+
+/* 日常模式：覆盖变量为杂志风 */
+[data-mode="daily"] {
+  --bg: #fdfcfa;
+  --bg-card: #ffffff;
+  --bg-soft: #f5f3ef;
+  --text: #1a1a1a;
+  --text-soft: #5c5c5c;
+  --text-mute: #9a9a9a;
+  --accent: #c8553d;
+  --accent-soft: #f9ece8;
+  --accent-hover: #a8442f;
+  --border: #ebe9e4;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.08);
+  --radius: 4px;
+  --radius-sm: 3px;
+  --maxw: 720px;
+  --maxw-wide: 1120px;
+}
+
+/* 日常：整体背景干净，正文用衬线感 */
+[data-mode="daily"] body {
+  background: #fdfcfa;
+  font-family: var(--sans);
+  letter-spacing: 0.01em;
+}
+
+/* 日常：导航栏更克制，去掉毛玻璃改纯白细边 */
+[data-mode="daily"] .site-header {
+  background: rgba(253,252,250,0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #ebe9e4;
+}
+[data-mode="daily"] .logo {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+[data-mode="daily"] .logo-mark {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+[data-mode="daily"] .main-nav a {
+  font-size: .88rem;
+  font-weight: 400;
+  color: #5c5c5c;
+}
+[data-mode="daily"] .main-nav a:hover {
+  color: #1a1a1a;
+  background: transparent;
+}
+[data-mode="daily"] .main-nav a.active {
+  color: #1a1a1a;
+  background: transparent;
+  border-bottom: 2px solid #c8553d;
+  border-radius: 0;
+}
+[data-mode="daily"] .main-nav a.nav-write {
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 3px;
+}
+
+/* 日常 hero：杂志封面式，大留白+衬线大标题+细分隔线 */
+[data-mode="daily"] .hero,
+[data-mode="daily"] .hero-daily {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 80px 0 48px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #ebe9e4;
+  text-align: left;
+}
+[data-mode="daily"] .hero-daily h1 {
+  font-family: var(--serif);
+  font-size: 2.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #1a1a1a;
+  margin-bottom: 20px;
+}
+[data-mode="daily"] .hero-daily h1 .accent {
+  color: #c8553d;
+  font-style: italic;
+}
+[data-mode="daily"] .hero-daily p {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  color: #5c5c5c;
+  line-height: 1.8;
+  max-width: 480px;
+  margin-bottom: 28px;
+}
+[data-mode="daily"] .hero-daily .hero-tags {
+  gap: 24px;
+}
+[data-mode="daily"] .hero-daily .hero-tags span {
+  background: none;
+  font-family: var(--sans);
+  font-size: .78rem;
+  color: #9a9a9a;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0;
+}
+[data-mode="daily"] .hero-inner { max-width: 100%; }
+
+/* 日常 hero 有背景图时保留遮罩 */
+[data-mode="daily"] .hero-daily.has-bg {
+  border: none;
+  border-radius: 0;
+  min-height: 360px;
+  padding: 80px 48px;
+}
+[data-mode="daily"] .hero-daily.has-bg h1,
+[data-mode="daily"] .hero-daily.has-bg p { color: #fff; }
+[data-mode="daily"] .hero-daily.has-bg h1 .accent { color: #ffd9b8; }
+[data-mode="daily"] .hero-daily.has-bg .hero-tags span { color: rgba(255,255,255,0.8); }
+
+/* 日常：section 标题用衬线+细线分隔 */
+[data-mode="daily"] .section-head h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+[data-mode="daily"] .section-head .count {
+  font-family: var(--sans);
+  color: #9a9a9a;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: .75rem;
+}
+
+/* 日常：主内容区上方留白增大 */
+[data-mode="daily"] .site-main { padding: 0 0 80px; }
+[data-mode="daily"] .container { padding: 0 32px; }
+
+/* 日常：卡片网格更宽松，像杂志排版 */
+[data-mode="daily"] .card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 40px;
+  margin-top: 48px;
+}
+[data-mode="daily"] .xhs-card {
+  background: #fff;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  transition: opacity .3s ease;
+}
+[data-mode="daily"] .xhs-card:hover {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.85;
+}
+[data-mode="daily"] .xhs-cover {
+  aspect-ratio: 4 / 5;
+  border-radius: 0;
+}
+[data-mode="daily"] .xhs-cover::after {
+  background: linear-gradient(to top, rgba(0,0,0,0.1) 0%, transparent 50%);
+}
+[data-mode="daily"] .xhs-cover .cover-cat {
+  background: rgba(0,0,0,0.4);
+  border-radius: 0;
+  font-family: var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: .68rem;
+  padding: 4px 10px;
+}
+[data-mode="daily"] .xhs-cover .cover-read { display: none; }
+[data-mode="daily"] .xhs-body {
+  padding: 20px 0 0;
+}
+[data-mode="daily"] .xhs-body h3 {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+[data-mode="daily"] .xhs-body .xhs-excerpt {
+  font-family: var(--serif);
+  font-size: .92rem;
+  color: #5c5c5c;
+  line-height: 1.7;
+}
+[data-mode="daily"] .xhs-body .xhs-footer {
+  border-top: none;
+  padding-top: 12px;
+}
+[data-mode="daily"] .xhs-body .xhs-tag {
+  background: none;
+  color: #9a9a9a;
+  font-size: .72rem;
+  letter-spacing: 0.03em;
+  padding: 0;
+}
+[data-mode="daily"] .xhs-body .xhs-date {
+  font-family: var(--sans);
+  font-size: .72rem;
+  color: #9a9a9a;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* 日常：列表视图也走杂志风 */
+[data-mode="daily"] .post-card {
+  background: none;
+  border: none;
+  border-bottom: 1px solid #ebe9e4;
+  border-radius: 0;
+  padding: 28px 0;
+}
+[data-mode="daily"] .post-card:hover {
+  background: none;
+  border-color: #ebe9e4;
+}
+[data-mode="daily"] .post-card h3 {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+[data-mode="daily"] .post-card .pc-cat {
+  font-family: var(--sans);
+  font-size: .72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c8553d;
+  background: none;
+  padding: 0;
+}
+[data-mode="daily"] .post-card .pc-excerpt {
+  font-family: var(--serif);
+  color: #5c5c5c;
+}
+
+/* 日常：文章详情页标题用衬线 */
+[data-mode="daily"] .article-header h1 {
+  font-family: var(--serif);
+  font-size: 2.2rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+[data-mode="daily"] .markdown-body {
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  line-height: 1.85;
+  color: #2a2a2a;
+}
+[data-mode="daily"] .markdown-body h2,
+[data-mode="daily"] .markdown-body h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+}
+
+/* 日常：空状态也走克制风 */
+[data-mode="daily"] .empty-state .es-icon { font-size: 2rem; opacity: 0.4; }
+[data-mode="daily"] .empty-state h3 { font-family: var(--serif); font-weight: 600; }
+
+/* 日常：页脚克制 */
+[data-mode="daily"] .site-footer {
+  background: #1a1a1a;
+  color: #9a9a9a;
+  border-top: none;
+  padding: 48px 0 32px;
+}
+[data-mode="daily"] .site-footer .footer-brand,
+[data-mode="daily"] .site-footer .footer-desc,
+[data-mode="daily"] .site-footer .footer-links a,
+[data-mode="daily"] .site-footer .footer-copy {
+  color: #9a9a9a;
+}
+[data-mode="daily"] .site-footer .logo-mark {
+  background: #fff;
+  color: #1a1a1a;
+}
 
 /* 开发模式：覆盖变量为黑白极简 */
 [data-mode="dev"] {
@@ -1235,41 +1520,6 @@ ul, ol { padding-left: 1.4em; }
 [data-mode="dev"] .main-nav a.nav-write { background: #1f2328; color: #fff; }
 [data-mode="dev"] .main-nav a.nav-write:hover { background: #2f3238; }
 [data-mode="dev"] code, [data-mode="dev"] pre { font-family: var(--mono); }
-
-/* 日常 hero：明亮活泼渐变 */
-.hero-daily {
-  background: linear-gradient(135deg, #fff5e6 0%, #ffe8d6 45%, #ffd9e4 100%);
-  border-radius: var(--radius);
-  padding: 52px 32px;
-  margin-bottom: 28px;
-  border: 1px solid #ffd9b8;
-}
-.hero-daily h1 { font-size: 2.3rem; }
-.hero-daily h1 .accent { color: #ff7a45; }
-.hero-daily p { color: var(--text-soft); }
-.hero-daily .hero-tags span { background: rgba(255,255,255,0.72); color: #d9480f; }
-
-/* 日常 hero 支持背景图：有图时文字白色叠在上面 */
-.hero-daily.has-bg {
-  position: relative;
-  background-size: cover;
-  background-position: center;
-  border: none;
-  min-height: 280px;
-  display: flex;
-  align-items: center;
-}
-.hero-daily.has-bg::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 100%);
-  border-radius: var(--radius);
-}
-.hero-daily.has-bg > * { position: relative; z-index: 1; }
-.hero-daily.has-bg h1,
-.hero-daily.has-bg p { color: #fff; }
-.hero-daily.has-bg h1 .accent { color: #ffd9b8; }
-.hero-daily.has-bg .hero-tags span { background: rgba(255,255,255,0.2); color: #fff; backdrop-filter: blur(8px); }
 
 /* 开发 hero：极简分隔线 */
 .hero-dev {
