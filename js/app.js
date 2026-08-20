@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260820e';
+  const APP_VERSION = '20260820f';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -560,20 +560,34 @@
           </div>
         </section>`;
     } else {
-      const heroImg = SITE.dailyHeroImage || '';
-      const heroBgAttr = heroImg ? `style="background-image:url('${heroImg}')"` : '';
-      const heroCls = heroImg ? 'hero hero-daily has-bg fade-in' : 'hero hero-daily fade-in';
+      // hero 背景图：支持多张候选，每天/每次随机切换，避免单调
+      const heroPool = [
+        'assets/daily-hero-1.jpg',
+        'assets/daily-hero-2.jpg',
+        'assets/daily-hero-3.jpg',
+        'assets/daily-hero-4.jpg',
+        'assets/daily-hero-5.jpg'
+      ];
+      let heroImg = SITE.dailyHeroImage || '';
+      if (!heroImg) {
+        // 按日期选一张，今天看到的图明天可能换
+        const dayIdx = Math.floor(Date.now() / 86400000) % heroPool.length;
+        heroImg = heroPool[dayIdx];
+      }
       heroOrFilter = `
-        <section class="${heroCls}" ${heroBgAttr}>
+        <section class="hero hero-daily has-bg fade-in" style="background-image:url('${heroImg}')">
           <div class="hero-inner">
+            <div class="hero-eyebrow">DAILY · 生活随笔</div>
             <h1>记录生活的<span class="accent">光</span>与<span class="accent">影</span></h1>
-            <p>日常点滴、读书观影、随手拍下的瞬间。<br>好的生活，和好的代码一样需要耐心打磨。</p>
+            <p class="hero-lede">咖啡、晨光、读书、行走、随手拍下的瞬间。<br>好的生活，和好的代码一样需要耐心打磨。</p>
             <div class="hero-tags">
-              <span>📝 ${posts.length} 篇</span>
+              <span>📝 ${posts.length} 篇文章</span>
               <span>🏷️ ${getAllTags().length} 个标签</span>
               <span>📷 可在线记录</span>
             </div>
+            <a href="#/write" class="hero-cta">✍️ 开始记录今天</a>
           </div>
+          <div class="hero-credit">Photography from Unsplash</div>
         </section>`;
     }
 

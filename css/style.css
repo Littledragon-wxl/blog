@@ -1320,17 +1320,96 @@ ul, ol { padding-left: 1.4em; }
 }
 [data-mode="daily"] .hero-inner { max-width: 100%; }
 
-/* 日常 hero 有背景图时保留遮罩 */
+/* 日常 hero 有背景图时：摄影杂志封面式 */
 [data-mode="daily"] .hero-daily.has-bg {
   border: none;
   border-radius: 0;
-  min-height: 360px;
-  padding: 80px 48px;
+  min-height: 560px;
+  padding: 96px 64px 80px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  position: relative;
 }
-[data-mode="daily"] .hero-daily.has-bg h1,
-[data-mode="daily"] .hero-daily.has-bg p { color: #fff; }
-[data-mode="daily"] .hero-daily.has-bg h1 .accent { color: #ffd9b8; }
-[data-mode="daily"] .hero-daily.has-bg .hero-tags span { color: rgba(255,255,255,0.85); }
+[data-mode="daily"] .hero-daily.has-bg::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.45) 100%);
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-inner {
+  position: relative; z-index: 1;
+  max-width: 640px;
+  color: #fff;
+}
+[data-mode="daily"] .hero-daily.has-bg h1 {
+  color: #fff;
+  font-size: 3.4rem;
+  line-height: 1.15;
+  margin-bottom: 24px;
+}
+[data-mode="daily"] .hero-daily.has-bg h1 .accent {
+  color: #ffd9b8;
+  font-style: italic;
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-eyebrow {
+  display: inline-block;
+  font-family: var(--sans);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .25em;
+  color: #ffd9b8;
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 28px;
+  text-transform: uppercase;
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-lede {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  color: rgba(255,255,255,0.92);
+  line-height: 1.8;
+  max-width: 520px;
+  margin-bottom: 28px;
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-tags {
+  margin-bottom: 32px;
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-tags span {
+  color: rgba(255,255,255,0.85);
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-cta {
+  display: inline-block;
+  background: #d4622f;
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: 4px;
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: .05em;
+  transition: all .2s;
+  box-shadow: 0 4px 16px rgba(212,98,47,0.4);
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-cta:hover {
+  background: #b04a1e;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(212,98,47,0.55);
+}
+[data-mode="daily"] .hero-daily.has-bg .hero-credit {
+  position: absolute;
+  bottom: 20px;
+  right: 32px;
+  font-family: var(--sans);
+  font-size: .68rem;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+  z-index: 1;
+}
 
 /* 日常：section 标题用衬线+暖色 */
 [data-mode="daily"] .section-head h2 {
