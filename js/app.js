@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260725c';
+  const APP_VERSION = '20260820a';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -122,6 +122,7 @@
       'emoji: ' + (post.emoji || '📝'),
       'date: ' + (post.date || ''),
       'category: ' + (post.category || '未分类'),
+      'type: ' + (post.type || 'daily'),
       'tags: [' + tags.join(', ') + ']',
       'cover: ' + (post.cover || ''),
       'excerpt: ' + (post.excerpt || '').replace(/\r?\n/g, ' '),
@@ -141,6 +142,7 @@
       emoji: meta.emoji || '📝',
       date: meta.date || '',
       category: meta.category || '未分类',
+      type: meta.type || 'daily',
       tags: Array.isArray(meta.tags) ? meta.tags : (meta.tags ? [meta.tags] : ['未分类']),
       cover: meta.cover || '',
       excerpt: meta.excerpt || makeExcerpt(body),
@@ -213,6 +215,47 @@
   }
   function setView(v) {
     try { localStorage.setItem('blog-view', v); } catch (e) {}
+  }
+
+  // 频道模式：daily（日常）/ dev（开发），记忆偏好，默认日常
+  function getMode() {
+    try { return localStorage.getItem('blog-mode') || 'daily'; }
+    catch (e) { return 'daily'; }
+  }
+  function setMode(m) {
+    try { localStorage.setItem('blog-mode', m); } catch (e) {}
+    applyMode(m);
+  }
+  function applyMode(m) {
+    document.documentElement.setAttribute('data-mode', m);
+  }
+
+  // 顶部频道切换器：注入到导航栏，点击切换 hash
+  function injectModeSwitcher() {
+    if (document.getElementById('modeSwitcher')) return;
+    const wrap = document.querySelector('.nav-wrap');
+    if (!wrap) return;
+    const cur = getMode();
+    const sw = document.createElement('div');
+    sw.className = 'mode-switcher';
+    sw.id = 'modeSwitcher';
+    sw.innerHTML = `
+      <button data-mode="daily" class="${cur === 'daily' ? 'active' : ''}" title="日常记录">☀️ 日常</button>
+      <button data-mode="dev" class="${cur === 'dev' ? 'active' : ''}" title="开发记录">💻 开发</button>
+    `;
+    sw.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-mode]');
+      if (!btn) return;
+      const m = btn.getAttribute('data-mode');
+      if (m === getMode()) return;
+      location.hash = '#/' + m;
+    });
+    wrap.insertBefore(sw, wrap.querySelector('.main-nav'));
+  }
+  function updateModeSwitcher(mode) {
+    document.querySelectorAll('#modeSwitcher button').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-mode') === mode);
+    });
   }
 
   function getArticle(id) {
@@ -477,27 +520,39 @@
   }
 
   // ====== 渲染：首页 ======
-  function renderHome(tagFilter) {
-    let posts = getAllArticles();
+  function renderHome(tagFilter, mode) {
+    mode = mode || getMode();
+    let posts = getAllArticles().filter(a => (a.type || 'daily') === mode);
     let heroOrFilter = '';
 
     if (tagFilter) {
       posts = posts.filter(a => a.tags.includes(tagFilter));
       heroOrFilter = `
         <div class="tag-filter-head fade-in">
-          <a href="#/tags" class="back-link">← 全部标签</a>
+          <a href="#/${mode}" class="back-link">← 返回${mode === 'dev' ? '开发' : '日常'}</a>
           <h2><span class="hash">#</span>${escapeHtml(tagFilter)}</h2>
           <p style="color:var(--text-mute);font-size:.92rem;margin-top:6px">共 ${posts.length} 篇文章</p>
         </div>`;
+    } else if (mode === 'dev') {
+      heroOrFilter = `
+        <section class="hero hero-dev fade-in">
+          <h1>代码与<span class="accent">思考</span></h1>
+          <p>技术探索、工程实践、踩坑笔记。<br>用代码解决问题，用文字沉淀经验。</p>
+          <div class="hero-tags">
+            <span>📝 ${posts.length} 篇</span>
+            <span>🏷️ ${getAllTags().length} 个标签</span>
+            <span>⌨️ 可在线写作</span>
+          </div>
+        </section>`;
     } else {
       heroOrFilter = `
-        <section class="hero fade-in">
-          <h1>记录<span class="accent">代码</span>，也记录<span class="accent">生活</span></h1>
-          <p>一个全栈开发者的个人博客。这里写技术探索，也写深夜思考。<br>相信好的程序和好的文字，都需要耐心打磨。</p>
+        <section class="hero hero-daily fade-in">
+          <h1>记录生活的<span class="accent">光</span>与<span class="accent">影</span></h1>
+          <p>日常点滴、读书观影、随手拍下的瞬间。<br>好的生活，和好的代码一样需要耐心打磨。</p>
           <div class="hero-tags">
-            <span>📝 ${getAllArticles().length} 篇文章</span>
+            <span>📝 ${posts.length} 篇</span>
             <span>🏷️ ${getAllTags().length} 个标签</span>
-            <span>✍️ 可在线写作</span>
+            <span>📷 可在线记录</span>
           </div>
         </section>`;
     }
@@ -696,7 +751,7 @@
   // ====== 渲染：写作编辑器 ======
   function renderWrite(editId) {
     const editing = editId ? getArticle(editId) : null;
-    const a = editing || { id: '', title: '', category: '技术', tags: [], date: new Date().toISOString().slice(0, 10), excerpt: '', content: '', emoji: '📝', cover: 'ocean' };
+    const a = editing || { id: '', title: '', category: '技术', type: getMode(), tags: [], date: new Date().toISOString().slice(0, 10), excerpt: '', content: '', emoji: '📝', cover: 'ocean' };
     // 提前生成文章 id（新建时），使图片可在保存前上传到 posts/<id>-assets/
     const currentId = editing ? editing.id : genId('post');
 
@@ -729,6 +784,13 @@
                 <select id="edCategory">
                   <option ${a.category === '技术' ? 'selected' : ''}>技术</option>
                   <option ${a.category === '生活随笔' ? 'selected' : ''}>生活随笔</option>
+                </select>
+              </div>
+              <div class="ed-field">
+                <label>频道</label>
+                <select id="edType">
+                  <option value="daily" ${a.type === 'daily' ? 'selected' : ''}>☀️ 日常</option>
+                  <option value="dev" ${a.type === 'dev' ? 'selected' : ''}>💻 开发</option>
                 </select>
               </div>
               <div class="ed-field ed-field-grow">
@@ -1226,12 +1288,14 @@
       if (!title) { titleEl.focus(); alert('请填写标题'); return; }
       if (!content) { edEl.focus(); alert('请填写正文内容'); return; }
       const category = document.getElementById('edCategory').value;
+      const type = document.getElementById('edType').value;
       const tagsRaw = document.getElementById('edTags').value;
       const tags = tagsRaw.split(/[,，、]/).map(t => t.trim()).filter(Boolean);
       const cover = document.getElementById('edCover').value;
       const article = {
         id: currentId,
         title: title,
+        type: type,
         category: category,
         tags: tags.length ? tags : ['未分类'],
         date: editing ? editing.date : new Date().toISOString().slice(0, 10),
@@ -1503,9 +1567,13 @@
     // 高亮导航
     document.querySelectorAll('.main-nav a').forEach(a => a.classList.remove('active'));
 
-    if (hash === '/' || hash === '') {
+    if (hash === '/' || hash === '' || hash === '/daily' || hash === '/dev') {
+      let mode = hash === '/dev' ? 'dev' : (hash === '/daily' ? 'daily' : getMode());
+      setMode(mode);
+      if (hash === '/' || hash === '') history.replaceState(null, '', '#/' + mode);
+      updateModeSwitcher(mode);
       document.querySelector('.main-nav a[data-route="home"]').classList.add('active');
-      renderHome();
+      renderHome(null, mode);
     } else if (hash === '/tags') {
       document.querySelector('.main-nav a[data-route="tags"]').classList.add('active');
       renderTags();
@@ -1547,6 +1615,9 @@
 
   // 启动：先加载文章和站点数据，再启动路由
   async function init() {
+    // 应用初始频道主题 + 注入切换器
+    applyMode(getMode());
+    injectModeSwitcher();
     // 站点信息（仍用 js/site.json）
     let siteOk = false;
     try {

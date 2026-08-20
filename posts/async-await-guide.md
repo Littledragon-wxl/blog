@@ -4,6 +4,7 @@ title: JavaScript 异步进阶：async/await 的正确打开方式
 emoji: ⚡
 date: 2026-07-10
 category: 技术
+type: dev
 tags: [JavaScript, 异步编程, 前端]
 cover: indigo
 excerpt: async/await 看起来简单，但并发、错误处理、取消这些进阶场景，用错了照样翻车。本文聊点实战里的坑。

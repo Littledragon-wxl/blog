@@ -4,6 +4,7 @@ title: 一杯咖啡与一段代码：我的编程日常
 emoji: ☕
 date: 2026-07-08
 category: 生活随笔
+type: daily
 tags: [随笔, 生活, 咖啡]
 cover: sunset
 excerpt: 每天早上一杯手冲，然后打开编辑器。咖啡的香气和键盘的敲击声，构成了我工作日最稳定的仪式感。

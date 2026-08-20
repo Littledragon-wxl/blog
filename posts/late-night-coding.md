@@ -4,6 +4,7 @@ title: 深夜写代码的那些时刻
 emoji: 🌙
 date: 2026-07-15
 category: 生活随笔
+type: daily
 tags: [随笔, 程序员, 生活]
 cover: night
 excerpt: 凌晨两点，屏幕的蓝光映在脸上，全世界都睡了，只有你和那个 bug 醒着。这种时刻，说不清是孤独还是自由。

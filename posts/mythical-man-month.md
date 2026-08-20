@@ -4,6 +4,7 @@ title: 读《人月神话》有感：软件工程的永恒难题
 emoji: 📚
 date: 2026-06-28
 category: 生活随笔
+type: daily
 tags: [读书, 随笔, 软件工程]
 cover: berry
 excerpt: 这本书出版于 1975 年，半个世纪过去了，它说的每个问题今天依然在发生。为什么软件工程这么难有标准答案？

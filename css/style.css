@@ -1173,3 +1173,104 @@ ul, ol { padding-left: 1.4em; }
 
 /* ====== 选中文字 ====== */
 ::selection { background: var(--accent-soft); color: var(--accent-hover); }
+
+/* ============================================================
+   双频道主题：日常(daily, 默认) / 开发(dev)
+   daily = 明亮活泼暖色调；dev = GitHub 黑白极简等宽
+   ============================================================ */
+
+/* 开发模式：覆盖变量为黑白极简 */
+[data-mode="dev"] {
+  --bg: #ffffff;
+  --bg-card: #f6f8fa;
+  --bg-soft: #eaeef2;
+  --bg-code: #1f2328;
+  --text: #1f2328;
+  --text-soft: #57606a;
+  --text-mute: #818b98;
+  --accent: #0969da;
+  --accent-soft: #ddf4ff;
+  --accent-hover: #0550ae;
+  --green: #1a7f37;
+  --border: #d0d7de;
+  --shadow-sm: 0 1px 0 rgba(31,35,40,0.04);
+  --shadow-md: 0 3px 6px rgba(31,35,40,0.06);
+  --shadow-lg: 0 8px 24px rgba(31,35,40,0.08);
+  --radius: 6px;
+  --radius-sm: 4px;
+}
+[data-mode="dev"] body { font-family: var(--sans); }
+[data-mode="dev"] .site-header { background: rgba(255,255,255,0.92); border-bottom-color: #d0d7de; }
+[data-mode="dev"] .logo-mark { background: #1f2328; border-radius: 6px; }
+[data-mode="dev"] .markdown-body,
+[data-mode="dev"] .article-header h1 { font-family: var(--mono); }
+[data-mode="dev"] .post-card:hover { border-color: #0969da; }
+[data-mode="dev"] .post-card .pc-cat { color: #0969da; background: #ddf4ff; }
+[data-mode="dev"] .xhs-card { border-radius: 6px; box-shadow: var(--shadow-sm); }
+[data-mode="dev"] .xhs-card:hover { box-shadow: var(--shadow-md); }
+[data-mode="dev"] .xhs-cover { border-radius: 6px 6px 0 0; }
+[data-mode="dev"] .main-nav a.active { color: #0969da; background: #ddf4ff; }
+[data-mode="dev"] .main-nav a.nav-write { background: #1f2328; color: #fff; }
+[data-mode="dev"] .main-nav a.nav-write:hover { background: #2f3238; }
+[data-mode="dev"] code, [data-mode="dev"] pre { font-family: var(--mono); }
+
+/* 日常 hero：明亮活泼渐变 */
+.hero-daily {
+  background: linear-gradient(135deg, #fff5e6 0%, #ffe8d6 45%, #ffd9e4 100%);
+  border-radius: var(--radius);
+  padding: 52px 32px;
+  margin-bottom: 28px;
+  border: 1px solid #ffd9b8;
+}
+.hero-daily h1 { font-size: 2.3rem; }
+.hero-daily h1 .accent { color: #ff7a45; }
+.hero-daily p { color: var(--text-soft); }
+.hero-daily .hero-tags span { background: rgba(255,255,255,0.72); color: #d9480f; }
+
+/* 开发 hero：极简分隔线 */
+.hero-dev {
+  padding: 44px 0 30px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+}
+.hero-dev h1 { font-size: 1.95rem; font-weight: 600; font-family: var(--mono); }
+.hero-dev h1 .accent { color: var(--accent); }
+.hero-dev p { color: var(--text-soft); font-size: .98rem; }
+.hero-dev .hero-tags span { background: var(--bg-soft); font-family: var(--mono); font-size: .82rem; color: var(--text-soft); }
+
+/* 频道切换器 */
+.mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-soft);
+  border-radius: 999px;
+  padding: 3px;
+  margin-left: 10px;
+}
+.mode-switcher button {
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: .8rem;
+  font-weight: 500;
+  padding: 5px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+  font-family: var(--sans);
+}
+.mode-switcher button:hover { color: var(--text); }
+.mode-switcher button.active {
+  background: var(--bg-card);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 移动端：切换器随导航展开 */
+@media (max-width: 768px) {
+  .mode-switcher { margin: 10px 0 4px; order: 99; width: fit-content; }
+}

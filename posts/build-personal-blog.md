@@ -4,6 +4,7 @@ title: 从零搭建个人博客：技术选型与实现
 emoji: 🛠️
 date: 2026-07-18
 category: 技术
+type: dev
 tags: [前端, CSS, JavaScript]
 cover: ocean
 excerpt: 为什么选择纯静态方案 市面上的博客框架很多——Hexo、Hugo、Jekyll、WordPress……但我最终选择用最朴素的方式手写一个。原因很简单：  完全掌…

@@ -4,6 +4,7 @@ title: CSS 现代布局完全指南：Flexbox 与 Grid 实战
 emoji: 🎨
 date: 2026-07-02
 category: 技术
+type: dev
 tags: [CSS, 布局, 前端]
 cover: teal
 excerpt: Flexbox 和 Grid 不是二选一，而是配合使用。一文理清什么时候用哪个，以及那些容易踩的坑。
