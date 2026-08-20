@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260820f';
+  const APP_VERSION = '20260820g';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -574,6 +574,8 @@
         const dayIdx = Math.floor(Date.now() / 86400000) % heroPool.length;
         heroImg = heroPool[dayIdx];
       }
+      // 同时应用到 body::before，让整页沉浸
+      applyBodyHeroBg(heroImg);
       heroOrFilter = `
         <section class="hero hero-daily has-bg fade-in" style="background-image:url('${heroImg}')">
           <div class="hero-inner">
@@ -1709,6 +1711,17 @@
 
   // 回到顶部
   backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  // 应用整页背景图（日常频道沉浸式 hero 背景）
+  function applyBodyHeroBg(imgUrl) {
+    if (!imgUrl) {
+      document.body.classList.remove('has-hero-bg');
+      document.body.style.removeProperty('--hero-bg-image');
+      return;
+    }
+    document.body.classList.add('has-hero-bg');
+    document.body.style.setProperty('--hero-bg-image', `url(${imgUrl})`);
+  }
 
   // 启动：先加载文章和站点数据，再启动路由
   async function init() {
