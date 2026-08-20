@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260820b';
+  const APP_VERSION = '20260820c';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -125,6 +125,7 @@
       'type: ' + (post.type || 'daily'),
       'tags: [' + tags.join(', ') + ']',
       'cover: ' + (post.cover || ''),
+      'cover_image: ' + (post.cover_image || ''),
       'excerpt: ' + (post.excerpt || '').replace(/\r?\n/g, ' '),
       '---',
       '',
@@ -136,7 +137,7 @@
   // 由 front matter + 正文 还原成文章对象（与 posts.json 字段兼容）
   function postFromParsed(meta, body) {
     const id = meta.id || '';
-    return {
+    const post = {
       id: id,
       title: meta.title || id,
       emoji: meta.emoji || '📝',
@@ -145,9 +146,16 @@
       type: meta.type || 'daily',
       tags: Array.isArray(meta.tags) ? meta.tags : (meta.tags ? [meta.tags] : ['未分类']),
       cover: meta.cover || '',
+      cover_image: meta.cover_image || '',
       excerpt: meta.excerpt || makeExcerpt(body),
       content: body
     };
+    // 封面图优先级：cover_image 字段 → 正文第一张图 → 空（用渐变兜底）
+    if (!post.cover_image && body) {
+      const m = body.match(/!\[[^\]]*\]\(([^)]+)\)/);
+      if (m) post.cover_image = m[1];
+    }
+    return post;
   }
 
   // ====== HTML → Markdown 转换器（富文本编辑器内容转回 markdown 存储）======
@@ -552,14 +560,19 @@
           </div>
         </section>`;
     } else {
+      const heroImg = SITE.dailyHeroImage || '';
+      const heroBgAttr = heroImg ? `style="background-image:url('${heroImg}')"` : '';
+      const heroCls = heroImg ? 'hero hero-daily has-bg fade-in' : 'hero hero-daily fade-in';
       heroOrFilter = `
-        <section class="hero hero-daily fade-in">
-          <h1>记录生活的<span class="accent">光</span>与<span class="accent">影</span></h1>
-          <p>日常点滴、读书观影、随手拍下的瞬间。<br>好的生活，和好的代码一样需要耐心打磨。</p>
-          <div class="hero-tags">
-            <span>📝 ${posts.length} 篇</span>
-            <span>🏷️ ${getAllTags().length} 个标签</span>
-            <span>📷 可在线记录</span>
+        <section class="${heroCls}" ${heroBgAttr}>
+          <div class="hero-inner">
+            <h1>记录生活的<span class="accent">光</span>与<span class="accent">影</span></h1>
+            <p>日常点滴、读书观影、随手拍下的瞬间。<br>好的生活，和好的代码一样需要耐心打磨。</p>
+            <div class="hero-tags">
+              <span>📝 ${posts.length} 篇</span>
+              <span>🏷️ ${getAllTags().length} 个标签</span>
+              <span>📷 可在线记录</span>
+            </div>
           </div>
         </section>`;
     }
@@ -584,11 +597,21 @@
 
     const cardHtml = posts.map(a => {
       const grad = COVERS[a.cover] || COVERS.ocean;
+      // 封面图优先级：cover_image（已含 jsDelivr 直链转换）→ 渐变色块
+      let coverStyle, coverInner;
+      if (a.cover_image) {
+        const imgSrc = a.cover_image.indexOf('http') === 0 ? a.cover_image : RAW_BASE + (a.cover_image.replace(/^\.\//,''));
+        coverStyle = `background-image:url('${imgSrc}');background-size:cover;background-position:center;`;
+        coverInner = '';
+      } else {
+        coverStyle = `background:${grad};`;
+        coverInner = `<span class="cover-emoji">${a.emoji || '📄'}</span>`;
+      }
       return `
       <a class="xhs-card fade-in" href="#/post/${a.id}">
-        <div class="xhs-cover" style="background:${grad}">
+        <div class="xhs-cover" style="${coverStyle}">
           <span class="cover-cat">${a.category}</span>
-          <span class="cover-emoji">${a.emoji || '📄'}</span>
+          ${coverInner}
           <span class="cover-read">${readingTime(a.content)} 分钟</span>
         </div>
         <div class="xhs-body">
@@ -816,6 +839,15 @@
               <input type="text" id="edEmojiText" class="ed-emoji-text" value="${escapeHtml(a.emoji)}" maxlength="4" placeholder="或输入" />
             </div>
 
+            <div class="ed-cover-row">
+              <label>封面图片（可选，日常频道推荐上传）</label>
+              <div class="ed-cover-picker">
+                <button type="button" id="edCoverUpload" class="cover-upload-btn">📷 上传封面图</button>
+                <span class="cover-tip" id="edCoverTip">${a.cover_image ? '已设置封面图' : '未设置（将用配色或正文第一张图）'}</span>
+                <input type="file" id="edCoverInput" accept="image/*" style="display:none" />
+              </div>
+            </div>
+
             <div class="ed-toolbar" id="edToolbar">
               <button type="button" data-cmd="formatBlock-h2" title="二级标题">H2</button>
               <button type="button" data-cmd="formatBlock-h3" title="三级标题">H3</button>
@@ -1015,6 +1047,49 @@
         const files = e.target.files;
         if (files) { for (const f of files) uploadAndInsert(f); }
         e.target.value = ''; // 允许重复选择同一文件
+      });
+    }
+
+    // 封面图上传：复用 uploadImageFile 逻辑，存到 posts/<id>-assets/cover.<ext>
+    window.__coverImage = editing && editing.cover_image ? editing.cover_image : '';
+    const coverUploadBtn = document.getElementById('edCoverUpload');
+    const coverInput = document.getElementById('edCoverInput');
+    const coverTip = document.getElementById('edCoverTip');
+    if (coverUploadBtn && coverInput) {
+      coverUploadBtn.addEventListener('click', () => {
+        if (!isAdmin()) { alert('请先登录作者账号再上传封面。'); location.hash = '#/admin'; return; }
+        coverInput.click();
+      });
+      coverInput.addEventListener('change', async e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        coverUploadBtn.disabled = true;
+        coverUploadBtn.textContent = '⏳ 上传中…';
+        try {
+          // 用 uploadImageFile 的内部逻辑，但存为 cover 固定文件名
+          const id = currentId;
+          let dataUrl, ext;
+          if (file.type === 'image/gif') {
+            dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+            ext = 'gif';
+          } else {
+            dataUrl = await fileToCompressedDataURL(file, 1600, 0.85);
+            ext = (file.type === 'image/png') ? 'png' : 'jpg';
+          }
+          const base64 = String(dataUrl).split(',')[1];
+          const name = 'cover.' + ext;
+          const path = assetDir(id) + '/' + name;
+          await githubUploadBinary(base64, path, '上传封面: ' + name);
+          const rel = './' + CONFIG.postsDir + '/' + id + '-assets/' + name;
+          window.__coverImage = rel;
+          if (coverTip) coverTip.textContent = '✅ 已设置封面图';
+          coverUploadBtn.textContent = '✅ 已上传，点击替换';
+        } catch (err) {
+          alert('封面上传失败：' + (err && err.message || err));
+          coverUploadBtn.textContent = '📷 上传封面图';
+        }
+        coverUploadBtn.disabled = false;
+        e.target.value = '';
       });
     }
 
@@ -1309,7 +1384,8 @@
         excerpt: makeExcerpt(content),
         content: content,
         emoji: currentEmoji,
-        cover: cover
+        cover: cover,
+        cover_image: window.__coverImage || ''
       };
       const saveBtn = document.getElementById('edSave');
       saveBtn.disabled = true;

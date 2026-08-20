@@ -743,6 +743,28 @@ ul, ol { padding-left: 1.4em; }
   flex-wrap: wrap;
 }
 .ed-emoji-row > label { font-size: .78rem; color: var(--text-mute); font-weight: 500; }
+
+/* 封面图上传行 */
+.ed-cover-row {
+  margin-bottom: 18px;
+}
+.ed-cover-row > label { font-size: .78rem; color: var(--text-mute); font-weight: 500; display: block; margin-bottom: 8px; }
+.ed-cover-picker { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cover-upload-btn {
+  border: 1px dashed var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s;
+}
+.cover-upload-btn:hover { background: var(--accent); color: #fff; }
+.cover-upload-btn:disabled { opacity: .6; cursor: wait; }
+.cover-tip { font-size: .8rem; color: var(--text-mute); }
+
 .emoji-picks { display: flex; gap: 6px; flex-wrap: wrap; }
 .emoji-pick {
   width: 38px; height: 38px;
@@ -1227,6 +1249,28 @@ ul, ol { padding-left: 1.4em; }
 .hero-daily p { color: var(--text-soft); }
 .hero-daily .hero-tags span { background: rgba(255,255,255,0.72); color: #d9480f; }
 
+/* 日常 hero 支持背景图：有图时文字白色叠在上面 */
+.hero-daily.has-bg {
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  border: none;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+}
+.hero-daily.has-bg::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 100%);
+  border-radius: var(--radius);
+}
+.hero-daily.has-bg > * { position: relative; z-index: 1; }
+.hero-daily.has-bg h1,
+.hero-daily.has-bg p { color: #fff; }
+.hero-daily.has-bg h1 .accent { color: #ffd9b8; }
+.hero-daily.has-bg .hero-tags span { background: rgba(255,255,255,0.2); color: #fff; backdrop-filter: blur(8px); }
+
 /* 开发 hero：极简分隔线 */
 .hero-dev {
   padding: 44px 0 30px;
@@ -1290,4 +1334,63 @@ ul, ol { padding-left: 1.4em; }
 @media (max-width: 480px) {
   .mode-switcher { margin-left: 6px; }
   .mode-switcher button { padding: 4px 8px; font-size: .72rem; }
+}
+
+/* ============================================================
+   日常频道摄影网格：卡片更大、留白更多、封面图为主角
+   仅 [data-mode="daily"] 生效，开发频道保持原样
+   ============================================================ */
+[data-mode="daily"] .card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 28px;
+}
+[data-mode="daily"] .xhs-card {
+  border-radius: 18px;
+  border: none;
+  box-shadow: 0 2px 12px rgba(60,40,20,0.06);
+}
+[data-mode="daily"] .xhs-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(60,40,20,0.14);
+}
+[data-mode="daily"] .xhs-cover {
+  aspect-ratio: 3 / 2;
+}
+[data-mode="daily"] .xhs-cover::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.15) 0%, transparent 40%);
+  pointer-events: none;
+}
+[data-mode="daily"] .xhs-body {
+  padding: 20px 22px 22px;
+}
+[data-mode="daily"] .xhs-body h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+[data-mode="daily"] .xhs-body .xhs-excerpt {
+  font-size: .9rem;
+  margin-bottom: 16px;
+}
+[data-mode="daily"] .xhs-body .xhs-footer {
+  border-top: none;
+  padding-top: 0;
+}
+[data-mode="daily"] .xhs-body .xhs-tag {
+  background: #fff5e6;
+  color: #d9480f;
+}
+[data-mode="daily"] .xhs-body .xhs-date {
+  font-size: .76rem;
+  letter-spacing: .02em;
+}
+
+/* 日常频道：移动端卡片单列更大气 */
+@media (max-width: 768px) {
+  [data-mode="daily"] .card-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
 }
