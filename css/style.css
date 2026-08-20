@@ -1244,19 +1244,27 @@ ul, ol { padding-left: 1.4em; }
 .mode-switcher {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   background: var(--bg-soft);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px;
-  margin-left: 10px;
+  margin-left: 14px;
+  flex-shrink: 0;
+}
+.mode-switcher .ms-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 1px;
 }
 .mode-switcher button {
   border: none;
   background: transparent;
   color: var(--text-soft);
-  font-size: .8rem;
-  font-weight: 500;
-  padding: 5px 13px;
+  font-size: .82rem;
+  font-weight: 600;
+  padding: 6px 14px;
   border-radius: 999px;
   cursor: pointer;
   transition: all .2s;
@@ -1268,9 +1276,18 @@ ul, ol { padding-left: 1.4em; }
   background: var(--bg-card);
   color: var(--accent);
   box-shadow: var(--shadow-sm);
+  font-weight: 700;
 }
 
-/* 移动端：切换器随导航展开 */
+/* 移动端：切换器保持可见，缩小尺寸 */
 @media (max-width: 768px) {
-  .mode-switcher { margin: 10px 0 4px; order: 99; width: fit-content; }
+  .mode-switcher {
+    margin-left: 8px;
+    padding: 2px;
+  }
+  .mode-switcher button { padding: 4px 10px; font-size: .75rem; }
+}
+@media (max-width: 480px) {
+  .mode-switcher { margin-left: 6px; }
+  .mode-switcher button { padding: 4px 8px; font-size: .72rem; }
 }

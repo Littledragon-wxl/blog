@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260820a';
+  const APP_VERSION = '20260820b';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -230,7 +230,7 @@
     document.documentElement.setAttribute('data-mode', m);
   }
 
-  // 顶部频道切换器：注入到导航栏，点击切换 hash
+  // 顶部频道切换器：注入到导航栏 logo 之后、菜单之前
   function injectModeSwitcher() {
     if (document.getElementById('modeSwitcher')) return;
     const wrap = document.querySelector('.nav-wrap');
@@ -241,6 +241,7 @@
     sw.id = 'modeSwitcher';
     sw.innerHTML = `
       <button data-mode="daily" class="${cur === 'daily' ? 'active' : ''}" title="日常记录">☀️ 日常</button>
+      <span class="ms-divider"></span>
       <button data-mode="dev" class="${cur === 'dev' ? 'active' : ''}" title="开发记录">💻 开发</button>
     `;
     sw.addEventListener('click', e => {
@@ -250,7 +251,13 @@
       if (m === getMode()) return;
       location.hash = '#/' + m;
     });
-    wrap.insertBefore(sw, wrap.querySelector('.main-nav'));
+    // 插在 logo 之后，让切换器紧跟 logo，视觉上更突出
+    const logo = wrap.querySelector('.logo');
+    if (logo && logo.nextSibling) {
+      wrap.insertBefore(sw, logo.nextSibling);
+    } else {
+      wrap.appendChild(sw);
+    }
   }
   function updateModeSwitcher(mode) {
     document.querySelectorAll('#modeSwitcher button').forEach(b => {
