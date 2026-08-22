@@ -3,9 +3,9 @@ id: post-mt4kgihj
 title: 广州太古里白鹅潭街拍——初学进步中
 emoji: 🏞️
 date: 2026-08-22
-category: 技术
+category: 生活随笔
 type: daily
-tags: [未分类]
+tags: [街拍]
 cover: ocean
 cover_image: ./posts/post-mt4kgihj-assets/cover.jpg
 excerpt: 广州聚龙湾太古里游记  260822 一个未完全建设好的商业区，好多还在建设中，一种工业极简风的设计，还是不错的。 稍微吐槽一点，广州的8月真的好热啊，是人能出…
@@ -29,6 +29,8 @@ ISO感光度过高，会导致画面的细节丢失。所以不能过度降低�
 
 小小记录一下自己的摄影经验！！！！
 
-最后配一张今天拍的感觉不错的照片！简单p了下！！！
+最后配一张今天拍的感觉不错的照片！图一简单p了下！！！图二直出的，感觉可以稍微参考这个照片的参数，感觉拍的还是比较清的，不知道是不是镜头就是拍大景就有点差，头疼啊！！！
 
 ![DSC00074.jpg](./posts/post-mt4kgihj-assets/mt4kqhgc-lpgr3.jpg)
+
+![DSC00084.JPG](./posts/post-mt4kgihj-assets/mt4kt7w0-5rdp8.jpg)
