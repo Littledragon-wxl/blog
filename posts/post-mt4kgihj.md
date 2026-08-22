@@ -31,6 +31,10 @@ ISO感光度过高，会导致画面的细节丢失。所以不能过度降低�
 
 最后配一张今天拍的感觉不错的照片！图一简单p了下！！！图二直出的，感觉可以稍微参考这个照片的参数，感觉拍的还是比较清的，不知道是不是镜头就是拍大景就有点差，头疼啊！！！
 
+图2也简单P了下，嘻嘻，看着还行哦，继续加油！！！
+
 ![DSC00074.jpg](./posts/post-mt4kgihj-assets/mt4kqhgc-lpgr3.jpg)
 
 ![DSC00084.JPG](./posts/post-mt4kgihj-assets/mt4kt7w0-5rdp8.jpg)
+
+![广州太古里街拍2.jpg](./posts/post-mt4kgihj-assets/mt4lc9g2-d20b0.jpg)
