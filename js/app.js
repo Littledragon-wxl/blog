@@ -273,6 +273,53 @@
     });
   }
 
+  // 立体萤火虫粒子：近大远小、近清远糊、近快远慢，制造景深
+  function injectFireflies() {
+    if (document.getElementById('fireflyLayer')) return;
+    const layer = document.createElement('div');
+    layer.id = 'fireflyLayer';
+    layer.className = 'firefly-layer';
+    layer.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(layer);
+
+    const rand = (min, max) => min + Math.random() * (max - min);
+    // 三层景深：near(近，大而清晰、快、亮) / mid / far(远，小而糊、慢、暗)
+    const tiers = [
+      { count: 7,  size: [4, 6],     blur: [0, 0.5],  alpha: [0.6, 0.9],   dist: [60, 110], dur: [10, 16] },
+      { count: 10, size: [2.5, 4],   blur: [0.4, 1],  alpha: [0.35, 0.6],  dist: [30, 60],  dur: [14, 22] },
+      { count: 14, size: [1.5, 2.5], blur: [1, 2],    alpha: [0.15, 0.35], dist: [12, 30],  dur: [18, 30] },
+    ];
+    const colors = [
+      'rgba(110, 240, 180, 0.85)',   // 荧光青绿
+      'rgba(232, 162, 76, 0.85)',    // 琥珀
+      'rgba(125, 191, 107, 0.85)',   // 苔绿
+    ];
+
+    tiers.forEach(tier => {
+      for (let i = 0; i < tier.count; i++) {
+        const f = document.createElement('span');
+        f.className = 'firefly';
+        const size = rand(tier.size[0], tier.size[1]);
+        const dx = (Math.random() < 0.5 ? -1 : 1) * rand(tier.dist[0], tier.dist[1]);
+        const dy = -rand(tier.dist[0] * 0.6, tier.dist[1] * 0.9);
+        const color = colors[Math.floor(rand(0, colors.length))];
+        f.style.width = size + 'px';
+        f.style.height = size + 'px';
+        f.style.left = rand(3, 97) + '%';
+        f.style.top = rand(5, 92) + '%';
+        f.style.setProperty('--ff-color', color);
+        f.style.setProperty('--ff-blur', rand(tier.blur[0], tier.blur[1]).toFixed(2) + 'px');
+        f.style.setProperty('--ff-glow', (size * 2.2).toFixed(1) + 'px');
+        f.style.setProperty('--ff-max', rand(tier.alpha[0], tier.alpha[1]).toFixed(2));
+        f.style.setProperty('--ff-dx', dx.toFixed(1) + 'px');
+        f.style.setProperty('--ff-dy', dy.toFixed(1) + 'px');
+        f.style.setProperty('--ff-dur', rand(tier.dur[0], tier.dur[1]).toFixed(1) + 's');
+        f.style.setProperty('--ff-delay', (-rand(0, tier.dur[1])).toFixed(1) + 's');
+        layer.appendChild(f);
+      }
+    });
+  }
+
   function getArticle(id) {
     return getAllArticles().find(a => a.id === id);
   }
@@ -1750,6 +1797,7 @@
     // 应用初始频道主题 + 注入切换器
     applyMode(getMode());
     injectModeSwitcher();
+    injectFireflies();
     // 站点信息（仍用 js/site.json）
     let siteOk = false;
     try {

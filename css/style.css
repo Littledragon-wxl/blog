@@ -2395,3 +2395,309 @@ ul, ol { padding-left: 1.4em; }
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ============================================================
+   暗黑科技自然风（daily 主题 · v1 示例）
+   概念："深夜森林里一块发光的屏幕"
+   —— 深墨绿黑为底，荧光青绿做锚点，琥珀/苔绿点缀，
+      光斑与萤火虫微动效制造"活着的自然"呼吸感。
+   说明：追加于文件末尾，覆盖 daily 原奶油白配色；
+       删除本区块即可恢复原样。
+   ============================================================ */
+
+/* 1. 设计 Token 重定义 */
+[data-mode="daily"] {
+  --bg: #0a0f0c;
+  --bg-card: rgba(20, 29, 24, 0.72);
+  --bg-soft: rgba(32, 44, 37, 0.6);
+  --bg-code: #0e1612;
+  --text: #e6ede8;
+  --text-soft: #9aab9f;
+  --text-mute: #5f7064;
+  --accent: #4adea0;
+  --accent-soft: rgba(74, 222, 160, 0.14);
+  --accent-hover: #6ef0b4;
+  --green: #7dbf6b;
+  --border: rgba(74, 222, 160, 0.14);
+  --border-light: rgba(74, 222, 160, 0.22);
+  --shadow-sm: 0 2px 14px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 30px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 60px rgba(0, 0, 0, 0.6);
+  --radius: 20px;
+  --radius-sm: 12px;
+  --wenkai: "LXGW WenKai", "LXGW WenKai Screen", "Noto Serif SC", serif;
+  --handwrite: "Zhi Mang Xing", "LXGW WenKai", cursive;
+  --amber: #e8a24c;
+  --moss: #7dbf6b;
+  --water: #5aa9c9;
+}
+
+/* 2. 背景与自然光斑 */
+[data-mode="daily"] body {
+  background: #0a0f0c;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+/* 光斑：像阳光穿过树冠洒下，青绿萤火 + 琥珀暖光 + 水蓝冷光 */
+[data-mode="daily"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 18% 12%, rgba(74, 222, 160, 0.15) 0%, transparent 45%),
+    radial-gradient(ellipse at 82% 78%, rgba(232, 162, 76, 0.11) 0%, transparent 50%),
+    radial-gradient(ellipse at 55% 55%, rgba(90, 169, 201, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 30% 88%, rgba(125, 191, 107, 0.09) 0%, transparent 45%);
+  animation: natureDrift 28s ease-in-out infinite alternate;
+}
+@keyframes natureDrift {
+  0%   { opacity: 0.7; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+
+/* 3. 顶部导航：半透明暗玻璃 */
+[data-mode="daily"] .site-header {
+  background: rgba(10, 15, 12, 0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid rgba(74, 222, 160, 0.12);
+}
+[data-mode="daily"] .logo { color: var(--text); font-family: var(--wenkai); }
+[data-mode="daily"] .logo-mark {
+  background: linear-gradient(135deg, #4adea0, #7dbf6b 55%, #e8a24c);
+  color: #0a0f0c;
+  border-radius: 10px;
+  font-weight: 700;
+  box-shadow: 0 4px 18px rgba(74, 222, 160, 0.35);
+}
+[data-mode="daily"] .main-nav a { color: var(--text-soft); font-size: .88rem; }
+[data-mode="daily"] .main-nav a:hover { color: var(--text); background: transparent; }
+[data-mode="daily"] .main-nav a.active { color: var(--accent); background: var(--accent-soft); }
+[data-mode="daily"] .main-nav a.nav-write { background: var(--accent); color: #06261a; border-radius: 8px; }
+[data-mode="daily"] .main-nav a.nav-write:hover { background: var(--accent-hover); color: #06261a; }
+
+/* 频道切换器适配暗黑 */
+[data-mode="daily"] .mode-switcher {
+  background: rgba(20, 29, 24, 0.6);
+  border-color: rgba(74, 222, 160, 0.16);
+}
+[data-mode="daily"] .mode-switcher button { color: var(--text-soft); }
+[data-mode="daily"] .mode-switcher button.active { background: var(--accent-soft); color: var(--accent); }
+
+/* 4. 个人主页布局（daily-home） */
+[data-mode="daily"] .daily-avatar {
+  background: linear-gradient(135deg, #4adea0, #7dbf6b 60%, #e8a24c);
+  color: #0a0f0c;
+  box-shadow: 0 8px 30px rgba(74, 222, 160, 0.3);
+}
+[data-mode="daily"] .daily-name { color: var(--text); }
+[data-mode="daily"] .daily-role { color: var(--text-soft); }
+[data-mode="daily"] .daily-loc { color: var(--text-mute); }
+[data-mode="daily"] .daily-gh { color: var(--accent); }
+[data-mode="daily"] .daily-gh:hover { color: var(--accent-hover); }
+[data-mode="daily"] .daily-section-title { color: var(--text); }
+[data-mode="daily"] .daily-role-text { color: var(--text-soft); }
+[data-mode="daily"] .daily-signature { color: var(--text); }
+[data-mode="daily"] .daily-more {
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text-soft);
+}
+[data-mode="daily"] .daily-more:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* 5. 文章行（post-row） */
+[data-mode="daily"] .post-row-link {
+  background: var(--bg-card);
+  border-color: var(--border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+[data-mode="daily"] .post-row-link:hover {
+  background: rgba(32, 44, 37, 0.7);
+  border-color: rgba(74, 222, 160, 0.3);
+}
+[data-mode="daily"] .post-row-date { color: var(--text-mute); }
+[data-mode="daily"] .post-row-title { color: var(--text); }
+[data-mode="daily"] .post-row-link:hover .post-row-title { color: var(--accent); }
+[data-mode="daily"] .post-row-arrow { color: var(--text-mute); }
+[data-mode="daily"] .post-row-link:hover .post-row-arrow { color: var(--accent); }
+[data-mode="daily"] .post-row-empty { color: var(--text-mute); }
+
+/* 6. 卡片（标签筛选 / 其它视图） */
+[data-mode="daily"] .xhs-card,
+[data-mode="daily"] .post-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+[data-mode="daily"] .xhs-card:hover,
+[data-mode="daily"] .post-card:hover {
+  border-color: rgba(74, 222, 160, 0.4);
+  box-shadow: var(--shadow-lg), 0 0 40px rgba(74, 222, 160, 0.15);
+}
+[data-mode="daily"] .xhs-body h3,
+[data-mode="daily"] .post-card h3 { color: var(--text); }
+[data-mode="daily"] .xhs-body .xhs-excerpt,
+[data-mode="daily"] .post-card .pc-excerpt { color: var(--text-soft); }
+[data-mode="daily"] .xhs-body .xhs-tag,
+[data-mode="daily"] .post-card .pc-tag { background: var(--accent-soft); color: var(--accent); }
+[data-mode="daily"] .xhs-body .xhs-date,
+[data-mode="daily"] .post-card .pc-read { color: var(--text-mute); }
+[data-mode="daily"] .post-card .pc-cat { color: var(--accent); }
+
+/* 7. 区块标题 */
+[data-mode="daily"] .section-head h2 { color: var(--text); }
+[data-mode="daily"] .section-head .count { color: var(--accent); }
+
+/* 8. 文章详情页 */
+[data-mode="daily"] .article-header h1 { color: var(--text); }
+[data-mode="daily"] .article-header .ac-cat { color: var(--accent); }
+[data-mode="daily"] .article-header .ac-tag { background: var(--accent-soft); color: var(--accent); }
+[data-mode="daily"] .markdown-body { color: #d3ddd6; }
+[data-mode="daily"] .markdown-body h1,
+[data-mode="daily"] .markdown-body h2,
+[data-mode="daily"] .markdown-body h3 { color: var(--text); }
+[data-mode="daily"] .markdown-body code { background: var(--bg-soft); color: var(--accent); }
+[data-mode="daily"] .markdown-body pre { background: var(--bg-code); }
+[data-mode="daily"] .markdown-body blockquote { background: var(--bg-soft); border-left-color: var(--accent); color: var(--text-soft); }
+[data-mode="daily"] .back-link { color: var(--text-soft); }
+[data-mode="daily"] .back-link:hover { color: var(--accent); }
+
+/* 9. 标签页 */
+[data-mode="daily"] .tag-cloud a {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text-soft);
+}
+[data-mode="daily"] .tag-cloud a:hover { color: var(--accent); border-color: var(--accent); }
+[data-mode="daily"] .tag-cloud a .tag-count { background: var(--bg-soft); color: var(--text-mute); }
+
+/* 10. 页脚 */
+[data-mode="daily"] .site-footer {
+  background: rgba(8, 12, 10, 0.9);
+  border-top: 1px solid rgba(74, 222, 160, 0.12);
+  padding: 48px 0 32px;
+}
+[data-mode="daily"] .site-footer .footer-brand,
+[data-mode="daily"] .site-footer .footer-desc,
+[data-mode="daily"] .site-footer .footer-links a,
+[data-mode="daily"] .site-footer .footer-copy { color: #9aab9f; }
+[data-mode="daily"] .site-footer .footer-links a:hover { color: var(--accent); }
+[data-mode="daily"] .site-footer .logo-mark {
+  background: linear-gradient(135deg, #4adea0, #7dbf6b);
+  color: #0a0f0c;
+}
+
+/* 11. 滚动条与选中文字 */
+[data-mode="daily"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #4adea0, #e8a24c);
+}
+[data-mode="daily"] ::selection {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+/* ============================================================
+   暗黑科技自然风 · v2 灵动增强
+   ============================================================ */
+
+
+
+/* 头像：呼吸光晕（青绿主光 + 琥珀余光交替） */
+@keyframes avatarGlow {
+  0%, 100% { box-shadow: 0 8px 30px rgba(74, 222, 160, 0.28); }
+  50%      { box-shadow: 0 8px 48px rgba(74, 222, 160, 0.5), 0 0 60px rgba(232, 162, 76, 0.22); }
+}
+[data-mode="daily"] .daily-avatar { animation: avatarGlow 4.5s ease-in-out infinite; }
+
+/* 姓名：文字流光（青绿→琥珀流动渐变） */
+@keyframes textSheen {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+[data-mode="daily"] .daily-name {
+  background: linear-gradient(90deg, #e6ede8 0%, #4adea0 40%, #e8a24c 70%, #e6ede8 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: textSheen 6s linear infinite;
+}
+
+/* 文章行：hover 左移 + 微光扫过 */
+[data-mode="daily"] .post-row-link {
+  position: relative;
+  overflow: hidden;
+  transition: transform .3s var(--ease-spring), background .3s, border-color .3s;
+}
+[data-mode="daily"] .post-row-link:hover {
+  transform: translateX(6px);
+}
+[data-mode="daily"] .post-row-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, transparent 30%, rgba(74, 222, 160, 0.12) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-position: 200% 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+[data-mode="daily"] .post-row-link:hover::before {
+  opacity: 1;
+  animation: rowSheen 1.1s ease forwards;
+}
+@keyframes rowSheen {
+  from { background-position: 200% 0; }
+  to   { background-position: -50% 0; }
+}
+
+/* 更多链接 & 标签 hover 微弹 */
+[data-mode="daily"] .daily-more { transition: all .3s var(--ease-spring); }
+[data-mode="daily"] .daily-more:hover { transform: translateX(3px); }
+[data-mode="daily"] .tag-cloud a { transition: all .35s var(--ease-spring); }
+
+/* ============================================================
+   暗黑科技自然风 · v3 立体萤火虫
+   用 JS 生成粒子：近大远小、近清远糊、近快远慢，浮在页面之上制造景深
+   ============================================================ */
+.firefly-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+}
+[data-mode="daily"] .firefly-layer { display: block; }
+
+.firefly {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,235,0.95) 0%, var(--ff-color, rgba(110,240,180,0.85)) 38%, transparent 72%);
+  filter: blur(var(--ff-blur, 0px));
+  box-shadow: 0 0 var(--ff-glow, 6px) var(--ff-color, rgba(110,240,180,0.5));
+  opacity: 0;
+  animation: ffFloat var(--ff-dur, 12s) ease-in-out infinite;
+  animation-delay: var(--ff-delay, 0s);
+  will-change: transform, opacity;
+}
+@keyframes ffFloat {
+  0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(0.5); }
+  50%  { opacity: var(--ff-max, 0.8); transform: translate3d(var(--ff-dx, 30px), var(--ff-dy, -40px), 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.5); }
+}
+/* 移动端减少粒子，降低干扰 */
+@media (max-width: 768px) {
+  .firefly { animation-duration: calc(var(--ff-dur, 12s) * 1.6); }
+}
