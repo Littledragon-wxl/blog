@@ -320,6 +320,30 @@
     });
   }
 
+  // 导航水珠指示器：毛玻璃胶囊随选中项滑动
+  function syncNavGlider() {
+    if (!mainNav) return;
+    let glider = mainNav.querySelector('.nav-glider');
+    if (!glider) {
+      glider = document.createElement('span');
+      glider.className = 'nav-glider';
+      glider.setAttribute('aria-hidden', 'true');
+      mainNav.appendChild(glider);
+    }
+    const active = mainNav.querySelector('a.active');
+    if (!active || window.innerWidth <= 768) {
+      glider.style.opacity = '0';
+      return;
+    }
+    const navRect = mainNav.getBoundingClientRect();
+    const aRect = active.getBoundingClientRect();
+    glider.style.top = (aRect.top - navRect.top).toFixed(1) + 'px';
+    glider.style.width = Math.round(aRect.width) + 'px';
+    glider.style.height = Math.round(aRect.height) + 'px';
+    glider.style.transform = 'translateX(' + (aRect.left - navRect.left).toFixed(1) + 'px)';
+    glider.style.opacity = '1';
+  }
+
   function getArticle(id) {
     return getAllArticles().find(a => a.id === id);
   }
@@ -1765,6 +1789,7 @@
       renderHome();
     }
     scrollToTop();
+    syncNavGlider();
   }
 
   // ====== 交互 ======
@@ -1832,6 +1857,8 @@
       }
     }
     window.addEventListener('hashchange', router);
+    window.addEventListener('resize', syncNavGlider);
+    window.addEventListener('load', () => setTimeout(syncNavGlider, 200));
     router();
   }
   init();

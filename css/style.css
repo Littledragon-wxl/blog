@@ -2474,11 +2474,20 @@ ul, ol { padding-left: 1.4em; }
   font-weight: 700;
   box-shadow: 0 4px 18px rgba(74, 222, 160, 0.35);
 }
-[data-mode="daily"] .main-nav a { color: var(--text-soft); font-size: .88rem; }
+[data-mode="daily"] .main-nav { position: relative; }
+[data-mode="daily"] .main-nav a {
+  color: var(--text-soft);
+  font-size: .88rem;
+  border-radius: 999px;
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+[data-mode="daily"] .main-nav a::before { display: none; }
 [data-mode="daily"] .main-nav a:hover { color: var(--text); background: transparent; }
-[data-mode="daily"] .main-nav a.active { color: var(--accent); background: var(--accent-soft); }
-[data-mode="daily"] .main-nav a.nav-write { background: var(--accent); color: #06261a; border-radius: 8px; }
-[data-mode="daily"] .main-nav a.nav-write:hover { background: var(--accent-hover); color: #06261a; }
+[data-mode="daily"] .main-nav a.active { color: var(--text); background: transparent; }
+[data-mode="daily"] .main-nav a.nav-write { color: var(--text-soft); background: transparent; border-radius: 999px; }
+[data-mode="daily"] .main-nav a.nav-write:hover { color: var(--text); background: transparent; }
 
 /* 频道切换器适配暗黑 */
 [data-mode="daily"] .mode-switcher {
@@ -2700,4 +2709,37 @@ ul, ol { padding-left: 1.4em; }
 /* 移动端减少粒子，降低干扰 */
 @media (max-width: 768px) {
   .firefly { animation-duration: calc(var(--ff-dur, 12s) * 1.6); }
+}
+
+/* ============================================================
+   暗黑科技自然风 · v4 导航毛玻璃水珠
+   圆形胶囊水珠随选中项滑动，写作按钮取消常驻高亮
+   ============================================================ */
+.nav-glider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 999px;
+  background: rgba(74, 222, 160, 0.12);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(74, 222, 160, 0.22);
+  box-shadow:
+    0 4px 20px rgba(74, 222, 160, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    width .4s var(--ease-spring),
+    height .4s var(--ease-spring),
+    top .4s var(--ease-spring),
+    transform .4s var(--ease-spring),
+    opacity .3s ease;
+}
+/* 移动端：导航变为下拉列，水珠定位失效，隐藏水珠并恢复背景高亮 */
+@media (max-width: 768px) {
+  .nav-glider { display: none; }
+  [data-mode="daily"] .main-nav a.active { background: var(--accent-soft); color: var(--accent); }
 }
