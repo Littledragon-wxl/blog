@@ -13,6 +13,7 @@ $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
 $html = "index.html"
+$utf8 = New-Object System.Text.UTF8Encoding($false)
 
 # Increment trailing letter sequence: a->b ... z->aa, az->ba
 function Increment-Suffix([string]$s) {
@@ -24,10 +25,11 @@ function Increment-Suffix([string]$s) {
   return 'a' + (-join $chars)
 }
 
-# Read current version from index.html
+# Read current version from index.html (UTF-8)
+$content = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot $html), $utf8)
 $cur = $null
-$line = Select-String -Path $html -Pattern 'v=([0-9A-Za-z]+)' | Select-Object -First 1
-if ($line) { $cur = $line.Matches[0].Groups[1].Value }
+$m = [regex]::Match($content, 'v=([0-9A-Za-z]+)')
+if ($m.Success) { $cur = $m.Groups[1].Value }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
   if (-not $cur) { Write-Host "No version found. Use .\push.ps1 <version>" -ForegroundColor Red; exit 1 }
@@ -37,8 +39,9 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
   Write-Host "Version: $cur -> $Version (custom)" -ForegroundColor Cyan
 }
 
-# Replace version in index.html
-(Get-Content $html -Raw) -replace ('v=' + [regex]::Escape($cur)), ('v=' + $Version) | Set-Content $html -NoNewline
+# Replace version, write back as UTF-8 (no BOM)
+$content = $content -replace ('v=' + [regex]::Escape($cur)), ('v=' + $Version)
+[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $html), $content, $utf8)
 
 # Commit message
 $msg = $M
