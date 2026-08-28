@@ -2478,16 +2478,45 @@ ul, ol { padding-left: 1.4em; }
 [data-mode="daily"] .main-nav a {
   color: var(--text-soft);
   font-size: .88rem;
+  font-weight: 500;
   border-radius: 999px;
   background: transparent;
+  border: none;
+  box-shadow: none;
   position: relative;
   z-index: 1;
 }
-[data-mode="daily"] .main-nav a::before { display: none; }
-[data-mode="daily"] .main-nav a:hover { color: var(--text); background: transparent; }
-[data-mode="daily"] .main-nav a.active { color: var(--text); background: transparent; }
-[data-mode="daily"] .main-nav a.nav-write { color: var(--text-soft); background: transparent; border-radius: 999px; }
-[data-mode="daily"] .main-nav a.nav-write:hover { color: var(--text); background: transparent; }
+/* 彻底清除下划线、方框边框、发光、位移等残留 */
+[data-mode="daily"] .main-nav a::before,
+[data-mode="daily"] .main-nav a::after { display: none; }
+[data-mode="daily"] .main-nav a:hover {
+  color: var(--text);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
+[data-mode="daily"] .main-nav a.active {
+  color: var(--text);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+[data-mode="daily"] .main-nav a.nav-write {
+  color: var(--text-soft);
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 999px;
+}
+[data-mode="daily"] .main-nav a.nav-write:hover {
+  color: var(--text);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
 
 /* 频道切换器适配暗黑 */
 [data-mode="daily"] .mode-switcher {
