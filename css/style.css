@@ -2534,6 +2534,15 @@ ul, ol { padding-left: 1.4em; }
   background: linear-gradient(135deg, #4adea0, #7dbf6b 60%, #e8a24c);
   color: #0a0f0c;
   box-shadow: 0 8px 30px rgba(74, 222, 160, 0.3);
+  overflow: hidden;
+}
+[data-mode="daily"] .daily-avatar img,
+[data-mode="daily"] .about-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 [data-mode="daily"] .daily-name { color: var(--text); }
 [data-mode="daily"] .daily-role { color: var(--text-soft); }
@@ -2752,12 +2761,14 @@ ul, ol { padding-left: 1.4em; }
   top: 0;
   left: 0;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(74, 222, 160, 0.18) 0%, rgba(74, 222, 160, 0.08) 100%);
-  border: 1px solid rgba(74, 222, 160, 0.25);
+  background: rgba(74, 222, 160, 0.10);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(74, 222, 160, 0.30);
   box-shadow:
-    0 2px 12px rgba(74, 222, 160, 0.18),
-    inset 0 1px 1px rgba(255, 255, 255, 0.22),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.18);
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 2px 3px rgba(255, 255, 255, 0.28),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.16);
   opacity: 0;
   pointer-events: none;
   z-index: 0;

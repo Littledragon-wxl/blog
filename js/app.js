@@ -632,7 +632,7 @@
       app.innerHTML = `
         <div class="container daily-home fade-in">
           <aside class="daily-aside">
-            <div class="daily-avatar">${escapeHtml(SITE.avatarText || '码')}</div>
+            <div class="daily-avatar">${SITE.avatar ? `<img src="${escapeHtml(SITE.avatar)}" alt="">` : escapeHtml(SITE.avatarText || '码')}</div>
             <h1 class="daily-name">${escapeHtml(SITE.author || '码与生活')}</h1>
             <p class="daily-role">${escapeHtml(SITE.role || '开发者 · 写作者')}</p>
             <div class="daily-meta">
@@ -1563,6 +1563,10 @@
                     <input type="text" id="sfAvatarText" maxlength="2" value="${escapeHtml(s.avatarText||'')}" />
                   </div>
                 </div>
+                <div class="sf-field">
+                  <label>头像图片 URL（留空则用文字头像）</label>
+                  <input type="text" id="sfAvatar" value="${escapeHtml(s.avatar||'')}" placeholder="https://..." />
+                </div>
                 <div class="sf-row">
                   <div class="sf-field">
                     <label>作者</label>
@@ -1610,6 +1614,7 @@
           author: document.getElementById('sfAuthor').value.trim(),
           role: document.getElementById('sfRole').value.trim(),
           avatarText: document.getElementById('sfAvatarText').value.trim().slice(0, 2),
+          avatar: document.getElementById('sfAvatar').value.trim(),
           bio: document.getElementById('sfBio').value.trim(),
           skills: document.getElementById('sfSkills').value.split(/[,，、]/).map(t => t.trim()).filter(Boolean),
           interests: document.getElementById('sfInterests').value.split(/[,，、]/).map(t => t.trim()).filter(Boolean),
@@ -1712,7 +1717,7 @@
         <div class="about-page fade-in">
           ${adminBadge}
           <div class="about-hero">
-            <div class="about-avatar">${escapeHtml(SITE.avatarText)}</div>
+            <div class="about-avatar">${SITE.avatar ? `<img src="${escapeHtml(SITE.avatar)}" alt="">` : escapeHtml(SITE.avatarText)}</div>
             <div class="about-hero-text">
               <h1>${escapeHtml(SITE.author)}</h1>
               <div class="about-role">${escapeHtml(SITE.role)}</div>
@@ -1782,6 +1787,7 @@
       document.querySelector('.main-nav a[data-route="write"]').classList.add('active');
       renderWrite(decodeURIComponent(hash.slice(6)));
     } else if (hash === '/admin') {
+      document.querySelector('.main-nav a[data-route="admin"]').classList.add('active');
       renderAdmin();
     } else if (hash.startsWith('/post/')) {
       renderPost(decodeURIComponent(hash.slice(6)));
