@@ -15,12 +15,14 @@ const CONFIG = {
 
 // 封面渐变配色板（小红书卡片视图用）
 const COVERS = {
-  ocean:   "linear-gradient(135deg, #4f8bc9 0%, #2c5f8d 100%)",
-  indigo:  "linear-gradient(135deg, #6366f1 0%, #4338ca 100%)",
-  teal:    "linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%)",
-  night:   "linear-gradient(135deg, #5b5680 0%, #2a2640 100%)",
-  sunset:  "linear-gradient(135deg, #f97316 0%, #db2777 100%)",
-  berry:   "linear-gradient(135deg, #e11d48 0%, #9f1239 100%)",
-  forest:  "linear-gradient(135deg, #65a30d 0%, #3f6212 100%)",
-  amber:   "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)"
+  ocean:   "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  indigo:  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  teal:    "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+  night:   "linear-gradient(135deg, #434343 0%, #000000 100%)",
+  sunset:  "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+  berry:   "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
+  forest:  "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+  amber:   "linear-gradient(135deg, #f6d365 0%, #fda085 100%)",
+  aurora:  "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)",
+  galaxy:  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
 };
