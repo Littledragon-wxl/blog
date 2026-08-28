@@ -2483,6 +2483,8 @@ ul, ol { padding-left: 1.4em; }
   background: transparent;
   border: none;
   box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   position: relative;
   z-index: 1;
 }
