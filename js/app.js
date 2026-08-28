@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260820g';
+  const APP_VERSION = '20260829a';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -538,6 +538,59 @@
   function renderHome(tagFilter, mode) {
     mode = mode || getMode();
     let posts = getAllArticles().filter(a => (a.type || 'daily') === mode);
+
+    // 日常频道：个人主页式布局（左头像右分区），像 jaison.ink
+    if (mode === 'daily' && !tagFilter) {
+      applyBodyHeroBg(''); // 清掉整页背景图
+      const signature = SITE.bio ? SITE.bio.split('。')[0] + '。' : '记录生活，也记录代码。';
+      const postListHtml = posts.map(a => `
+        <li class="post-row group fade-in">
+          <a class="post-row-link" href="#/post/${a.id}">
+            <time class="post-row-date">${shortDate(a.date)}</time>
+            <div class="post-row-body">
+              <span class="post-row-title">${escapeHtml(a.title)}</span>
+              <svg class="post-row-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" class="arrow-line"></line>
+                <polyline points="12 5 19 12 12 19" class="arrow-head"></polyline>
+              </svg>
+            </div>
+          </a>
+        </li>
+      `).join('');
+
+      app.innerHTML = `
+        <div class="container daily-home fade-in">
+          <aside class="daily-aside">
+            <div class="daily-avatar">${escapeHtml(SITE.avatarText || '码')}</div>
+            <h1 class="daily-name">${escapeHtml(SITE.author || '码与生活')}</h1>
+            <p class="daily-role">${escapeHtml(SITE.role || '开发者 · 写作者')}</p>
+            <div class="daily-meta">
+              <span class="daily-loc">📍 China</span>
+              <a class="daily-gh" href="https://github.com/Littledragon-wxl" target="_blank">GitHub →</a>
+            </div>
+          </aside>
+          <div class="daily-main">
+            <section class="daily-section">
+              <h2 class="daily-section-title">About</h2>
+              <div class="daily-section-body">
+                <p class="daily-role-text">${escapeHtml(SITE.role || 'Developer / Writer')}</p>
+                <p class="daily-signature">${escapeHtml(signature)}</p>
+                <a href="#/about" class="daily-more">More about me →</a>
+              </div>
+            </section>
+            <section class="daily-section">
+              <h2 class="daily-section-title">Posts</h2>
+              <div class="daily-section-body">
+                <ul class="post-rows">${postListHtml || '<li class="post-row-empty">还没有文章</li>'}</ul>
+                <a href="#/write" class="daily-more">✍️ 写新文章 →</a>
+              </div>
+            </section>
+          </div>
+        </div>`;
+      return;
+    }
+
+    // 开发频道 / 标签筛选：保持原有 hero + 卡片网格
     let heroOrFilter = '';
 
     if (tagFilter) {
@@ -548,7 +601,8 @@
           <h2><span class="hash">#</span>${escapeHtml(tagFilter)}</h2>
           <p style="color:var(--text-mute);font-size:.92rem;margin-top:6px">共 ${posts.length} 篇文章</p>
         </div>`;
-    } else if (mode === 'dev') {
+    } else {
+      applyBodyHeroBg('');
       heroOrFilter = `
         <section class="hero hero-dev fade-in">
           <h1>代码与<span class="accent">思考</span></h1>
@@ -558,38 +612,6 @@
             <span>🏷️ ${getAllTags().length} 个标签</span>
             <span>⌨️ 可在线写作</span>
           </div>
-        </section>`;
-    } else {
-      // hero 背景图：支持多张候选，每天/每次随机切换，避免单调
-      const heroPool = [
-        'assets/daily-hero-1.jpg',
-        'assets/daily-hero-2.jpg',
-        'assets/daily-hero-3.jpg',
-        'assets/daily-hero-4.jpg',
-        'assets/daily-hero-5.jpg'
-      ];
-      let heroImg = SITE.dailyHeroImage || '';
-      if (!heroImg) {
-        // 按日期选一张，今天看到的图明天可能换
-        const dayIdx = Math.floor(Date.now() / 86400000) % heroPool.length;
-        heroImg = heroPool[dayIdx];
-      }
-      // 同时应用到 body::before，让整页沉浸
-      applyBodyHeroBg(heroImg);
-      heroOrFilter = `
-        <section class="hero hero-daily has-bg fade-in" style="background-image:url('${heroImg}')">
-          <div class="hero-inner">
-            <div class="hero-eyebrow">DAILY · 生活随笔</div>
-            <h1>记录生活的<span class="accent">光</span>与<span class="accent">影</span></h1>
-            <p class="hero-lede">咖啡、晨光、读书、行走、随手拍下的瞬间。<br>好的生活，和好的代码一样需要耐心打磨。</p>
-            <div class="hero-tags">
-              <span>📝 ${posts.length} 篇文章</span>
-              <span>🏷️ ${getAllTags().length} 个标签</span>
-              <span>📷 可在线记录</span>
-            </div>
-            <a href="#/write" class="hero-cta">✍️ 开始记录今天</a>
-          </div>
-          <div class="hero-credit">Photography from Unsplash</div>
         </section>`;
     }
 
