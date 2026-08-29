@@ -1,12 +1,19 @@
 # ====== Blog quick-push script ======
 # Usage:
-#   .\push.ps1              -> auto-bump version suffix (20260829b -> 20260829c) and push
-#   .\push.ps1 20260829c    -> set version explicitly
+#   .\push.ps1              -> auto-bump version suffix (20260829g -> 20260829h) and push
+#   .\push.ps1 20260829h    -> set version explicitly
 #   .\push.ps1 -M "message" -> custom commit message
+#
+# NOTE: keep this file pure ASCII. PowerShell 5.1 parses BOM-less UTF-8
+# scripts as ANSI, which corrupts non-ASCII comments/args and has caused
+# a broken replace in production (v20260829g incident).
 
 param(
   [string]$Version = "",
-  [string]$M = ""
+  # NOTE: do not name this $M — PS variables are case-insensitive, $M collides
+  # with the $m regex-match variable below and coerces the Match object to string.
+  [Alias("M")]
+  [string]$Msg = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,34 +32,35 @@ function Increment-Suffix([string]$s) {
   return 'a' + (-join $chars)
 }
 
-# Read current version from index.html (UTF-8)
+# Read current version from the first ?v=... asset query in index.html
 $content = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot $html), $utf8)
-$cur = $null
-$m = [regex]::Match($content, 'v=([0-9A-Za-z]+)')
-if ($m.Success) { $cur = $m.Groups[1].Value }
+$m = [regex]::Match($content, '\?v=([0-9A-Za-z]+)')
+if (-not $m.Success) {
+  Write-Host "No ?v= version found in index.html. Aborting (nothing was modified)." -ForegroundColor Red
+  exit 1
+}
+$cur = $m.Groups[1].Value
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-  if (-not $cur) { Write-Host "No version found. Use .\push.ps1 <version>" -ForegroundColor Red; exit 1 }
   $Version = Increment-Suffix $cur
   Write-Host "Version: $cur -> $Version" -ForegroundColor Cyan
 } else {
   Write-Host "Version: $cur -> $Version (custom)" -ForegroundColor Cyan
 }
 
-# Replace version, write back as UTF-8 (no BOM)
-$content = $content -replace ('v=' + [regex]::Escape($cur)), ('v=' + $Version)
-[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $html), $content, $utf8)
+# Replace ONLY asset query strings (?v=...), never attribute names like http-equiv=
+$newContent = [regex]::Replace($content, '\?v=[0-9A-Za-z]+', ('?v=' + $Version))
+[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $html), $newContent, $utf8)
 
-# 同步 js/app.js 内的 APP_VERSION（缓存清理逻辑依赖它与页面版本一致）
+# Sync APP_VERSION inside js/app.js (cache-busting logic depends on it)
 $appJs = Join-Path $PSScriptRoot "js\app.js"
 $jsContent = [System.IO.File]::ReadAllText($appJs, $utf8)
-$jsContent = $jsContent -replace "const APP_VERSION = '[0-9A-Za-z]+';", ("const APP_VERSION = '" + $Version + "';")
-[System.IO.File]::WriteAllText($appJs, $jsContent, $utf8)
+$jsNew = [regex]::Replace($jsContent, "const APP_VERSION = '[0-9A-Za-z]+';", ("const APP_VERSION = '" + $Version + "';"))
+[System.IO.File]::WriteAllText($appJs, $jsNew, $utf8)
 Write-Host "APP_VERSION synced to $Version" -ForegroundColor Cyan
 
 # Commit message
-$msg = $M
-if ([string]::IsNullOrWhiteSpace($msg)) { $msg = "chore: bump version to $Version" }
+if ([string]::IsNullOrWhiteSpace($Msg)) { $Msg = "chore: bump version to $Version" }
 
 git add -A
 git commit -m $msg
