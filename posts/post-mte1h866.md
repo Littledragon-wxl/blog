@@ -7,7 +7,7 @@ category: 生活随笔
 type: daily
 tags: [咔咔阶段]
 cover: ocean
-cover_image: 
+cover_image: ./posts/post-mte1h866-assets/mte1j2t9-24gkr.jpg
 excerpt: <div class="callout"<span style="color: rgb211, 221, 214; fontsize: 16.32px; let…
 ---
 
@@ -20,3 +20,15 @@ excerpt: <div class="callout"<span style="color: rgb211, 221, 214; fontsize: 16.
 今天是园拍的一天！！！
 
 ![20260829_150340.jpg](./posts/post-mte1h866-assets/mte1j2t9-24gkr.jpg)
+
+## 今日采风还算得意的（修啦~）
+
+![广州天河公园1.jpg](./posts/post-mte1h866-assets/mte93swr-xhn74.jpg)
+
+### 还有哦
+
+![广州天河公园2.jpg](./posts/post-mte1h866-assets/mte9biws-vnmtp.jpg)
+
+### 没想到屋内还有美景
+
+![窗户口.jpg](./posts/post-mte1h866-assets/mtea4lrz-yn1ir.jpg)
