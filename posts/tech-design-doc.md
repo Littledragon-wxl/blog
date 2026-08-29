@@ -57,7 +57,7 @@ blog/
 ├── posts/
 │   ├── <id>.md             # 每篇文章一个文件（front matter + Markdown）
 │   └── <id>-assets/        # 该文章的配图目录
-├── docs/DESIGN.md          # 本文档
+├── posts/tech-design-doc.md # 本文（即开发记录）
 ├── push.ps1                # 版本号自增 + 提交推送 一条龙
 ├── start-blog.bat          # 本地预览服务器（开机自启用）
 └── .github/workflows/deploy.yml  # GitHub Pages 自动部署
