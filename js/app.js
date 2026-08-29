@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260829h';
+  const APP_VERSION = '20260829i';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -1945,6 +1945,38 @@
       </div>`;
   }
 
+  // ====== 渲染：开发记录（docs/DESIGN.md） ======
+  async function renderDesign() {
+    updateDocMeta('开发记录 · 独白', '独白博客的技术设计文档与开发记录。');
+    app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📄</div><h3>加载中…</h3></div></div>';
+    try {
+      const r = await fetch('docs/DESIGN.md', { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const md = await r.text();
+      app.innerHTML = `
+        <div class="container">
+          <article class="article-wrap fade-in">
+            <div class="article-top-bar">
+              <a href="#/" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                返回文章列表
+              </a>
+              <span class="share-note">技术设计文档 · 随仓库同步更新</span>
+            </div>
+            <header class="article-header">
+              <div class="ac-meta"><span class="ac-cat">开发记录</span><span>·</span><span>docs/DESIGN.md</span></div>
+              <h1>技术设计文档</h1>
+            </header>
+            <div class="markdown-body">${marked.parse(md)}</div>
+          </article>
+        </div>`;
+      // 复用文章页增强：目录 / 代码复制 / 进度条 / 灯箱
+      setupArticleEnhancers();
+    } catch (e) {
+      app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📄</div><h3>文档加载失败</h3><p>' + escapeHtml(String(e && e.message || e)) + '</p></div></div>';
+    }
+  }
+
   // ====== 路由 ======
   function router() {
     const hash = location.hash.slice(1) || '/';
@@ -1983,6 +2015,10 @@
     } else if (hash === '/admin') {
       document.querySelector('.main-nav a[data-route="admin"]').classList.add('active');
       renderAdmin();
+    } else if (hash === '/design') {
+      const designLink = document.querySelector('.main-nav a[data-route="design"]');
+      if (designLink) designLink.classList.add('active');
+      renderDesign();
     } else if (hash.startsWith('/post/')) {
       renderPost(decodeURIComponent(hash.slice(6)));
     } else {

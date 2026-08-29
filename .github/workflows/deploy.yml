@@ -34,7 +34,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp -r index.html css js assets _site/ 2>/dev/null || true
+          cp -r index.html css js assets docs _site/ 2>/dev/null || true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
