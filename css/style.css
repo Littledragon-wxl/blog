@@ -2926,3 +2926,56 @@ ul, ol { padding-left: 1.4em; }
 [data-mode="dev"] .site-footer .footer-desc { color: #9aa4af; }
 [data-mode="dev"] .site-footer .footer-links a { color: #c9ced4; }
 [data-mode="dev"] .site-footer .footer-copy { color: #8a939d; }
+
+/* ============================================================
+   v7 手机端顶部按钮优化
+   - 文章页顶部操作栏：「返回」与「登录/编辑/删除」保持同一行两端对齐
+     （原 1467 行规则在窄屏强制 column 堆叠，两行按钮很零碎）
+   - 顶部频道切换器：手机端居中放大为分段控件，不再缩成挤在 logo 边的小豆豆
+   ============================================================ */
+@media (max-width: 768px) {
+  .article-top-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .article-top-bar .back-link { font-size: .84rem; padding: 6px 0; }
+  .article-top-bar .write-cta,
+  .article-top-bar .action-btn {
+    padding: 6px 14px;
+    font-size: .84rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .mode-switcher { margin: 0 auto; padding: 3px; }
+  .mode-switcher button { padding: 6px 13px; font-size: .8rem; }
+}
+@media (max-width: 480px) {
+  .mode-switcher { margin: 0 auto; padding: 3px; }
+  .mode-switcher button { padding: 6px 11px; font-size: .76rem; }
+}
+
+/* v7 补丁：移动端下拉菜单改用 display 控制显隐。
+   原实现靠 position:fixed + translateY 藏起菜单，被后写的
+   .main-nav { position: relative }（水珠定位基准）覆盖后，
+   菜单会以一列窄条挤进 header。display 方案不受 position 影响；
+   position 用 !important 压过 [data-mode] 主题块的同名规则。 */
+@media (max-width: 768px) {
+  .main-nav {
+    display: none;
+    position: fixed !important;
+    top: 72px;
+    left: 14px;
+    right: 14px;
+    transform: none;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-lg);
+    padding: 10px 14px;
+    z-index: 90;
+  }
+  .main-nav.open { display: flex; }
+}
