@@ -215,8 +215,6 @@ ul, ol { padding-left: 1.4em; }
   pointer-events: none;
   z-index: -1;
 }
-.fade-in { animation: fadeIn .7s var(--ease-spring); }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: none; } }
 
 /* ====== 首页 Hero ====== */
 .hero {
@@ -2785,3 +2783,146 @@ ul, ol { padding-left: 1.4em; }
   .nav-glider { display: none; }
   [data-mode="daily"] .main-nav a.active { background: var(--accent-soft); color: var(--accent); }
 }
+
+/* ============================================================
+   v5 体验增强：骨架屏 / reveal 入场 / 阅读进度 / TOC / 代码复制 / 灯箱
+   ============================================================ */
+
+/* ---- 骨架屏（首次加载占位） ---- */
+.sk-bar { border-radius: 8px; opacity: .55; }
+.sk-avatar { width: 88px; height: 88px; border-radius: 50%; margin-bottom: 14px; }
+.sk-card { padding: 18px; border-radius: var(--radius, 16px); background: var(--bg-card, rgba(255,255,255,.03)); border: 1px solid var(--border, rgba(255,255,255,.06)); display: flex; flex-direction: column; gap: 10px; }
+.sk-card .sk-bar:last-child { margin-bottom: 4px; }
+
+/* ---- reveal 入场（IntersectionObserver 加 .in 触发） ---- */
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity .55s ease var(--d, 0ms), transform .55s var(--ease-spring, ease) var(--d, 0ms); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ---- 阅读进度条（仅文章页显示） ---- */
+#read-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1001;
+  background: linear-gradient(90deg, #4adea0, #6ef0b4 55%, #e8a24c);
+  transform-origin: 0 50%; transform: scaleX(0);
+  opacity: 0; transition: opacity .25s ease;
+  pointer-events: none;
+}
+#read-progress.on { opacity: 1; }
+
+/* ---- TOC 目录（桌面右侧悬浮） ---- */
+.toc-aside {
+  position: fixed; right: max(16px, calc(50vw - 620px)); top: 50%; transform: translateY(-50%);
+  width: 208px; max-height: 62vh; overflow-y: auto;
+  padding: 14px 6px 14px 14px; border-radius: 14px;
+  background: var(--bg-card, rgba(255,255,255,.04));
+  border: 1px solid var(--border, rgba(255,255,255,.08));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  scrollbar-width: thin;
+}
+.toc-title { font-size: .78rem; letter-spacing: .35em; color: var(--text-mute); margin-bottom: 10px; font-weight: 600; }
+.toc-aside ul { list-style: none; margin: 0; padding: 0; }
+.toc-aside a {
+  display: block; padding: 5px 8px; border-radius: 8px; cursor: pointer;
+  font-size: .82rem; line-height: 1.45; color: var(--text-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-left: 2px solid transparent; transition: color .2s, background .2s, border-color .2s;
+}
+.toc-aside a.toc-sub { padding-left: 22px; font-size: .78rem; }
+.toc-aside a:hover { color: var(--accent); background: var(--accent-soft, rgba(74, 222, 160, .08)); }
+.toc-aside a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft, rgba(74, 222, 160, .08)); font-weight: 600; }
+
+/* TOC 移动端折叠（默认隐藏，≤1200px 显示） */
+.toc-mobile { display: none; }
+@media (max-width: 1200px) {
+  .toc-aside { display: none; }
+  .toc-mobile {
+    display: block; margin: 0 0 18px; padding: 10px 16px; border-radius: 12px;
+    background: var(--bg-card, rgba(255,255,255,.04)); border: 1px solid var(--border, rgba(255,255,255,.08));
+  }
+  .toc-mobile summary { cursor: pointer; font-weight: 600; font-size: .9rem; color: var(--text-soft); }
+  .toc-mobile ul { list-style: none; margin: 10px 0 4px; padding: 0; }
+  .toc-mobile a { display: block; padding: 6px 8px; cursor: pointer; font-size: .86rem; color: var(--text-soft); border-radius: 8px; }
+  .toc-mobile a.toc-sub { padding-left: 24px; font-size: .82rem; }
+  .toc-mobile a:hover, .toc-mobile a.active { color: var(--accent); background: var(--accent-soft, rgba(74, 222, 160, .08)); }
+}
+
+/* ---- 代码块复制按钮 ---- */
+.markdown-body pre { position: relative; }
+.code-copy-btn {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08); color: rgba(255,255,255,.75);
+  font-size: .74rem; letter-spacing: .08em; cursor: pointer;
+  opacity: 0; transition: opacity .2s, background .2s, color .2s;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.markdown-body pre:hover .code-copy-btn { opacity: 1; }
+.code-copy-btn:hover { background: rgba(255,255,255,.16); color: #fff; }
+.code-copy-btn.ok { color: #4adea0; border-color: rgba(74, 222, 160, .4); }
+.code-copy-btn.err { color: #f87171; border-color: rgba(248, 113, 113, .4); }
+@media (hover: none) { .code-copy-btn { opacity: 1; } } /* 触屏常显 */
+
+/* ---- 图片灯箱 ---- */
+.lightbox {
+  position: fixed; inset: 0; z-index: 1002;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(4, 8, 6, .88); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility .25s;
+  cursor: zoom-out;
+}
+.lightbox.on { opacity: 1; visibility: visible; }
+.lightbox img { max-width: 92vw; max-height: 92vh; border-radius: 10px; box-shadow: 0 24px 80px rgba(0,0,0,.6); transform: scale(.96); transition: transform .25s ease; }
+.lightbox.on img { transform: scale(1); }
+
+/* 正文图片可点击暗示 */
+.markdown-body img { cursor: zoom-in; }
+
+/* ============================================================
+   v6 布局修复
+   1) dev 频道恢复浅色底：全局 body 是暗底 var(--bg-dark)，而 dev 主题
+      是按浅色底设计的（GitHub 风），导致暗字配暗底文字隐形
+   2) 导航水珠：dev 有自己的 active 样式，隐藏水珠；.main-nav 始终作为定位基准
+   3) 日常首页：加宽内容列、标题栏与内容基线对齐（桌面），修复手机端标题占位 120px 的空隙
+   4) 短内容时首页垂直居中，消除页中大块空白
+   5) 手机端 logo 不折行；文章阅读行宽收窄至 700px
+   ============================================================ */
+
+/* 1. dev 浅色底 */
+[data-mode="dev"] body {
+  background: #ffffff;
+  color: var(--text);
+}
+
+/* 2. 导航水珠 */
+.main-nav { position: relative; }
+[data-mode="dev"] .nav-glider { display: none; }
+
+/* 3. 日常首页布局 */
+@media (min-width: 768px) {
+  .daily-home { max-width: 1020px; }
+  .daily-section { align-items: baseline; }
+  .daily-section-title {
+    flex: 0 0 110px;
+    min-width: 110px;
+    padding-right: 20px;
+    border-right: 1px solid var(--border);
+    line-height: 1.4;
+  }
+  /* 首页垂直居中（内容少时不再大片留白） */
+  .site-main { display: flex; flex-direction: column; }
+  .daily-home { margin-top: auto; margin-bottom: auto; }
+}
+@media (max-width: 767px) {
+  .daily-section-title { flex: 0 0 auto; min-width: 0; }
+}
+
+/* 5. logo 与阅读行宽 */
+.logo-text { white-space: nowrap; }
+.article-wrap { max-width: 700px; }
+
+/* dev 浅色模式页脚：深色渐变底上恢复浅色文字 */
+[data-mode="dev"] .site-footer .footer-desc { color: #9aa4af; }
+[data-mode="dev"] .site-footer .footer-links a { color: #c9ced4; }
+[data-mode="dev"] .site-footer .footer-copy { color: #8a939d; }

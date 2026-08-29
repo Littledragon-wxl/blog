@@ -43,6 +43,13 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 $content = $content -replace ('v=' + [regex]::Escape($cur)), ('v=' + $Version)
 [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $html), $content, $utf8)
 
+# 同步 js/app.js 内的 APP_VERSION（缓存清理逻辑依赖它与页面版本一致）
+$appJs = Join-Path $PSScriptRoot "js\app.js"
+$jsContent = [System.IO.File]::ReadAllText($appJs, $utf8)
+$jsContent = $jsContent -replace "const APP_VERSION = '[0-9A-Za-z]+';", ("const APP_VERSION = '" + $Version + "';")
+[System.IO.File]::WriteAllText($appJs, $jsContent, $utf8)
+Write-Host "APP_VERSION synced to $Version" -ForegroundColor Cyan
+
 # Commit message
 $msg = $M
 if ([string]::IsNullOrWhiteSpace($msg)) { $msg = "chore: bump version to $Version" }

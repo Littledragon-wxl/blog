@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260829a';
+  const APP_VERSION = '20260829g';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -686,8 +686,8 @@
         </section>`;
     }
 
-    const listHtml = posts.map(a => `
-      <a class="post-card fade-in" href="#/post/${a.id}">
+    const listHtml = posts.map((a, i) => `
+      <a class="post-card reveal" style="--d:${Math.min(i, 8) * 60}ms" href="#/post/${a.id}">
         <div class="pc-meta">
           <span class="pc-cat">${a.category}</span>
           <span class="dot"></span>
@@ -704,7 +704,7 @@
       </a>
     `).join('');
 
-    const cardHtml = posts.map(a => {
+    const cardHtml = posts.map((a, i) => {
       const grad = COVERS[a.cover] || COVERS.ocean;
       // 封面图优先级：cover_image（已含 jsDelivr 直链转换）→ 渐变色块
       let coverStyle, coverInner;
@@ -717,7 +717,7 @@
         coverInner = `<span class="cover-emoji">${a.emoji || '📄'}</span>`;
       }
       return `
-      <a class="xhs-card fade-in" href="#/post/${a.id}">
+      <a class="xhs-card reveal" style="--d:${Math.min(i, 8) * 60}ms" href="#/post/${a.id}">
         <div class="xhs-cover" style="${coverStyle}">
           <span class="cover-cat">${a.category}</span>
           ${coverInner}
@@ -772,6 +772,9 @@
         renderHome(tagFilter);
       });
     }
+
+    // 卡片入场动画
+    observeReveals();
   }
 
   // ====== 渲染：文章详情 ======
@@ -789,7 +792,7 @@
       return;
     }
 
-    const html = marked.parse(resolveImgSrc(a.content, a.id));
+    const html = enhanceHtml(marked.parse(resolveImgSrc(a.content, a.id)));
     const related = getAllArticles().filter(x => x.id !== id && x.tags.some(t => a.tags.includes(t))).slice(0, 2);
     const admin = isAdmin();
 
@@ -865,6 +868,10 @@
         }
       });
     }
+
+    // 文章页增强 + 分享卡片信息
+    setupArticleEnhancers();
+    updateDocMeta(a.title + ' · 独白', String(a.excerpt || '').replace(/\s+/g, ' ').slice(0, 120));
   }
 
   function renderRelated(related) {
@@ -873,7 +880,7 @@
         <div class="section-head"><h2>相关阅读</h2></div>
         <div class="post-list">
           ${related.map(a => `
-            <a class="post-card fade-in" href="#/post/${a.id}">
+            <a class="post-card reveal" href="#/post/${a.id}">
               <div class="pc-meta">
                 <span class="pc-cat">${a.category}</span>
                 <span class="dot"></span>
@@ -885,6 +892,188 @@
           `).join('')}
         </div>
       </section>`;
+  }
+
+  // ====== 文章页增强：懒加载 / TOC / 代码复制 / 阅读进度 / 灯箱 / 入场动画 ======
+  // 渲染后处理：正文图片统一懒加载
+  function enhanceHtml(html) {
+    return String(html).replace(/<img\b(?![^>]*\bloading=)/gi, '<img loading="lazy" decoding="async"');
+  }
+
+  // 路由级 <title> / meta 更新（标签页标题 + 分享卡片）
+  function setMeta(sel, val) {
+    const el = document.head.querySelector(sel);
+    if (el) el.setAttribute('content', val);
+  }
+  function updateDocMeta(title, desc) {
+    document.title = title;
+    setMeta('meta[name="description"]', desc);
+    setMeta('meta[property="og:title"]', title);
+    setMeta('meta[property="og:description"]', desc);
+    setMeta('meta[name="twitter:title"]', title);
+    setMeta('meta[name="twitter:description"]', desc);
+  }
+
+  // 阅读进度条（单例，仅文章路由显示）
+  let readProgressBar = null;
+  function ensureReadProgress() {
+    if (!readProgressBar) {
+      readProgressBar = document.createElement('div');
+      readProgressBar.id = 'read-progress';
+      readProgressBar.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(readProgressBar);
+    }
+    return readProgressBar;
+  }
+  let progressHandler = null;
+  function setupReadProgress() {
+    const barEl = ensureReadProgress();
+    barEl.classList.add('on');
+    if (progressHandler) window.removeEventListener('scroll', progressHandler);
+    const update = () => {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - window.innerHeight;
+      barEl.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, window.scrollY / max) : 0) + ')';
+    };
+    progressHandler = update;
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  }
+
+  // 图片灯箱（点击放大，ESC / 点击关闭）
+  let lightboxEl = null;
+  function openLightbox(src) {
+    if (!lightboxEl) {
+      lightboxEl = document.createElement('div');
+      lightboxEl.className = 'lightbox';
+      lightboxEl.setAttribute('role', 'dialog');
+      lightboxEl.setAttribute('aria-label', '图片预览');
+      lightboxEl.innerHTML = '<img alt="预览大图">';
+      lightboxEl.addEventListener('click', () => lightboxEl.classList.remove('on'));
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') lightboxEl.classList.remove('on'); });
+      document.body.appendChild(lightboxEl);
+    }
+    lightboxEl.querySelector('img').src = src;
+    lightboxEl.classList.add('on');
+  }
+
+  // TOC 目录：桌面右侧悬浮 + 移动端顶部折叠，滚动高亮当前章节
+  let tocSpy = null;
+  function buildToc(body) {
+    const heads = [...body.querySelectorAll('h2, h3')];
+    if (heads.length < 2) return;
+    heads.forEach((h, i) => { if (!h.id) h.id = 'sec-' + i; });
+    const items = heads.map(h =>
+      `<li class="${h.tagName === 'H3' ? 'toc-sub' : ''}"><a data-target="${h.id}">${escapeHtml(h.textContent.trim())}</a></li>`
+    ).join('');
+
+    const aside = document.createElement('aside');
+    aside.className = 'toc-aside';
+    aside.innerHTML = `<div class="toc-title">目 录</div><ul>${items}</ul>`;
+    const wrap = document.querySelector('.article-wrap');
+    if (wrap) wrap.appendChild(aside);
+
+    const mob = document.createElement('details');
+    mob.className = 'toc-mobile';
+    mob.innerHTML = `<summary>📑 本文目录</summary><ul>${items}</ul>`;
+    body.parentNode.insertBefore(mob, body);
+
+    // 点击滚动（不用 href 锚点，避免触发 hash 路由跳走）
+    document.querySelectorAll('.toc-aside a, .toc-mobile a').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const t = document.getElementById(a.dataset.target);
+        if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        mob.removeAttribute('open');
+      });
+    });
+
+    // 滚动高亮
+    const links = [...aside.querySelectorAll('a')];
+    if (tocSpy) window.removeEventListener('scroll', tocSpy);
+    let ticking = false;
+    const spy = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const y = window.scrollY + 130;
+        let cur = -1;
+        heads.forEach((h, i) => { if (h.offsetTop <= y) cur = i; });
+        links.forEach((l, i) => l.classList.toggle('active', i === cur));
+      });
+    };
+    tocSpy = spy;
+    window.addEventListener('scroll', spy, { passive: true });
+    spy();
+  }
+
+  // 代码块复制按钮
+  function addCodeCopyButtons(body) {
+    body.querySelectorAll('pre').forEach(pre => {
+      if (pre.querySelector('.code-copy-btn')) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'code-copy-btn';
+      btn.textContent = '复制';
+      btn.addEventListener('click', async () => {
+        const code = pre.innerText;
+        let ok = false;
+        try { await navigator.clipboard.writeText(code); ok = true; }
+        catch (e) {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = code;
+            ta.style.cssText = 'position:fixed;opacity:0';
+            document.body.appendChild(ta);
+            ta.select();
+            ok = document.execCommand('copy');
+            ta.remove();
+          } catch (e2) {}
+        }
+        btn.textContent = ok ? '✓ 已复制' : '✗ 失败';
+        btn.classList.add(ok ? 'ok' : 'err');
+        setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('ok', 'err'); }, 1600);
+      });
+      pre.appendChild(btn);
+    });
+  }
+
+  // 灯箱绑定：正文图片点击放大
+  function bindLightbox(body) {
+    body.querySelectorAll('img').forEach(img => {
+      img.addEventListener('click', () => openLightbox(img.currentSrc || img.src));
+    });
+  }
+
+  // 文章页增强总入口
+  function setupArticleEnhancers() {
+    const body = document.querySelector('.markdown-body');
+    if (!body) return;
+    buildToc(body);
+    addCodeCopyButtons(body);
+    bindLightbox(body);
+    setupReadProgress();
+    observeReveals();
+  }
+
+  // 入场动画：卡片进入视口淡入（尊重 prefers-reduced-motion）
+  let revealObserver = null;
+  function observeReveals() {
+    const els = document.querySelectorAll('.reveal:not(.in)');
+    if (!els.length) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      els.forEach(el => el.classList.add('in'));
+      return;
+    }
+    if (!revealObserver) {
+      revealObserver = new IntersectionObserver(entries => {
+        entries.forEach(en => {
+          if (en.isIntersecting) { en.target.classList.add('in'); revealObserver.unobserve(en.target); }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+    }
+    els.forEach(el => revealObserver.observe(el));
   }
 
   // ====== 渲染：写作编辑器 ======
@@ -1026,7 +1215,7 @@
 
     // 把 markdown 渲染进富文本（图片转 raw 直链，编辑器内即时可预览）
     function loadToWysiwyg(md) {
-      edEl.innerHTML = marked.parse(resolveImgSrc(md || '', currentId));
+      edEl.innerHTML = enhanceHtml(marked.parse(resolveImgSrc(md || '', currentId)));
     }
 
     // 初始载入
@@ -1759,6 +1948,11 @@
   // ====== 路由 ======
   function router() {
     const hash = location.hash.slice(1) || '/';
+    // 离开文章页：收掉阅读进度条，恢复默认标题
+    if (readProgressBar) readProgressBar.classList.remove('on');
+    if (!hash.startsWith('/post/')) updateDocMeta('独白 · 个人博客', '一个关于技术与生活随笔的个人博客，记录代码与思考。');
+    // 非首页路由（文章/标签/关于等）：模式切换器回到当前频道高亮
+    if (!['', '/', '/daily', '/dev'].includes(hash)) updateModeSwitcher(getMode());
     // 关闭移动端菜单
     mainNav.classList.remove('open');
     // 高亮导航
@@ -1823,7 +2017,51 @@
     document.body.style.setProperty('--hero-bg-image', `url(${imgUrl})`);
   }
 
-  // 启动：先加载文章和站点数据，再启动路由
+  // 读取本地文章缓存（首屏缓存优先用）
+  function readPostsCache() {
+    try {
+      const c = JSON.parse(localStorage.getItem('blog-posts-cache') || 'null');
+      if (c && Array.isArray(c.articles) && c.articles.length) return c.articles;
+    } catch (e) {}
+    return null;
+  }
+
+  // 首次加载骨架屏（无缓存时占位，避免空等）
+  function showSkeleton() {
+    const bar = (h, w) => `<div class="sk-bar loading-shimmer" style="height:${h}px;width:${w}"></div>`;
+    app.innerHTML = getMode() === 'daily'
+      ? `<div class="container daily-home">
+          <aside class="daily-aside">
+            <div class="sk-avatar loading-shimmer"></div>
+            ${bar(26, '62%')}${bar(14, '44%')}
+          </aside>
+          <div class="daily-main">
+            <section class="daily-section">${bar(20, '28%')}${bar(14, '92%')}${bar(14, '68%')}</section>
+            <section class="daily-section">${bar(20, '24%')}${bar(14, '96%')}${bar(14, '84%')}${bar(14, '74%')}</section>
+          </div>
+        </div>`
+      : `<div class="container">
+          <section class="hero hero-dev">${bar(42, '58%')}${bar(15, '66%')}</section>
+          <div class="card-grid">
+            ${Array.from({ length: 4 }).map(() => `<div class="sk-card">${bar(14, '46%')}${bar(24, '92%')}${bar(13, '100%')}${bar(13, '78%')}</div>`).join('')}
+          </div>
+        </div>`;
+  }
+
+  // 后台静默刷新文章：仅当数据有变化且不在编辑页时重渲染
+  async function refreshInBackground() {
+    try {
+      const fresh = await loadPosts();
+      const sig = list => list.map(a => a.id + '|' + a.date + '|' + a.title + '|' + String(a.content || '').length).join('&');
+      if (fresh.length && sig(fresh) !== sig(ARTICLES)) {
+        ARTICLES = fresh;
+        const h = location.hash;
+        if (!h.startsWith('#/write') && !h.startsWith('#/edit')) router();
+      }
+    } catch (e) { /* 限流/离线：保持当前渲染 */ }
+  }
+
+  // 启动：站点数据就绪后，缓存优先渲染，后台静默刷新
   async function init() {
     // 应用初始频道主题 + 注入切换器
     applyMode(getMode());
@@ -1839,32 +2077,33 @@
       app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">⚠️</div><h3>站点信息加载失败</h3><p>请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
       return;
     }
-    // 文章：从 posts/ 目录加载（带缓存兜底）
-    try {
-      ARTICLES = await loadPosts();
-    } catch (e) {
-      try {
-        const c = JSON.parse(localStorage.getItem('blog-posts-cache') || 'null');
-        if (c && c.articles && c.articles.length) {
-          ARTICLES = c.articles;
-        } else {
-          throw e;
-        }
-      } catch (e2) {
-        // 最后的兜底：本地的 js/posts.json（迁移备份），便于本地预览 / API 限流时仍可读
-        try {
-          const pr = await fetch('js/posts.json', { cache: 'no-store' });
-          if (pr.ok) { ARTICLES = await pr.json(); }
-          else throw e2;
-        } catch (e3) {
-          app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📡</div><h3>文章加载失败</h3><p>' + String(e && e.message || '') + '</p><p style="margin-top:10px">请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
-          return;
-        }
-      }
-    }
     window.addEventListener('hashchange', router);
     window.addEventListener('resize', syncNavGlider);
     window.addEventListener('load', () => setTimeout(syncNavGlider, 200));
+
+    // 缓存优先：先渲染本地缓存（零等待），再后台拉 GitHub 更新
+    const cached = readPostsCache();
+    if (cached) {
+      ARTICLES = cached;
+      router();
+      refreshInBackground();
+      return;
+    }
+    // 无缓存：骨架屏占位，等首次加载完成
+    showSkeleton();
+    try {
+      ARTICLES = await loadPosts();
+    } catch (e) {
+      // 兜底：本地的 js/posts.json（迁移备份），便于本地预览 / API 限流时仍可读
+      try {
+        const pr = await fetch('js/posts.json', { cache: 'no-store' });
+        if (pr.ok) { ARTICLES = await pr.json(); }
+        else throw e;
+      } catch (e3) {
+        app.innerHTML = '<div class="container"><div class="empty-state"><div class="es-icon">📡</div><h3>文章加载失败</h3><p>' + String(e && e.message || '') + '</p><p style="margin-top:10px">请通过本地服务器（http://）访问，而非直接双击打开文件。</p></div></div>';
+        return;
+      }
+    }
     router();
   }
   init();
