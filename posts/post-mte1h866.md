@@ -31,4 +31,4 @@ excerpt: <div class="callout"<span style="color: rgb211, 221, 214; fontsize: 16.
 
 ### 没想到屋内还有美景
 
-![窗户口.jpg](./posts/post-mte1h866-assets/mtea4lrz-yn1ir.jpg)
+![窗户口.jpg](./posts/post-mte1h866-assets/mtea7nyp-q5911.jpg)
