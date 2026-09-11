@@ -31,10 +31,17 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp -r index.html css js assets _site/ 2>/dev/null || true
+          cp -r index.html css js posts _site/
+          if [ -d assets ]; then cp -r assets _site/; else echo "no assets/ dir, skipped"; fi
+          node scripts/build-meta.mjs --out _site --url "https://littledragon-wxl.github.io/blog/"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

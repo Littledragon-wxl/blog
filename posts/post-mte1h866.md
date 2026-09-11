@@ -8,7 +8,7 @@ type: daily
 tags: [咔咔阶段]
 cover: ocean
 cover_image: ./posts/post-mte1h866-assets/mte1j2t9-24gkr.jpg
-excerpt: <div class="callout"<span style="color: rgb211, 221, 214; fontsize: 16.32px; let…
+excerpt: 广州8月底出门，好热，好热，好热！！！广州天河公园，景色一般，估计广州有点难排上号啊😂今天是园拍的一天！！！
 ---
 
 <div class="callout"><span style="color: rgb(211, 221, 214); font-size: 16.32px; letter-spacing: 0.1632px; background-color: rgba(20, 29, 24, 0.72);">广州8月底出门，好热，好热，好热！！！</span></div>

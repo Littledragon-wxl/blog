@@ -4,7 +4,7 @@
 
   // 版本检测：若 localStorage 中缓存的版本号与当前不一致，清除文章缓存并强制刷新
   // 防止浏览器/Github Pages 缓存旧版 app.js，导致保存仍走旧逻辑（改写 js/posts.json）
-  const APP_VERSION = '20260829l';
+  const APP_VERSION = '20260829m';
   try {
     const cachedVersion = localStorage.getItem('blog-app-version');
     if (cachedVersion !== APP_VERSION) {
@@ -61,25 +61,64 @@
     }[c]));
   }
 
-  // 图片直链基础（jsDelivr CDN）。注意：raw.githubusercontent.com 的响应头带
-  // Content-Security-Policy: sandbox，浏览器会拒绝把它的图片渲染到页面里，
-  // 所以改用 jsDelivr，无此限制且带 CORS、加载更快。
+  // 图片 CDN 直链基础（jsDelivr）。只在两种情况下使用：
+  //   1. 同源相对路径加载失败（文章刚发布、Pages 还没重新部署完）
+  //   2. 编辑器里刚上传、尚未部署的图片
+  // 正常阅读时配图走站点同源相对路径 ./posts/...（deploy.yml 已把 posts/ 拷进 _site），
+  // 实测 jsDelivr 对本仓库的图片是 301 跳回 raw.githubusercontent.com，
+  // 而 raw 带 Content-Security-Policy: sandbox 且国内访问不稳，所以不作为主路径。
   const RAW_BASE = 'https://cdn.jsdelivr.net/gh/' + CONFIG.owner + '/' + CONFIG.repo + '@' + CONFIG.branch + '/';
 
-  // 把 md 中相对路径的图片转成 jsDelivr 直链，确保文章页和编辑器能立即显示
-  function resolveImgSrc(md, id) {
+  // 把 md 中相对路径的图片统一成 ./posts/<id>-assets/...（同源，部署后自包含）
+  // useCdn = true 时输出 CDN 直链（编辑器预览刚上传的图用）
+  function resolveImgSrc(md, id, useCdn) {
     if (!md || !id) return md;
     const safeId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const toRaw = (m, alt, prefix, name) => {
-      const raw = RAW_BASE + CONFIG.postsDir + '/' + encodeURIComponent(id) + '-assets/' + name;
-      return '![' + alt + '](' + raw + ')';
+    const to = (m, alt, prefix, name) => {
+      const src = useCdn
+        ? RAW_BASE + CONFIG.postsDir + '/' + encodeURIComponent(id) + '-assets/' + name
+        : './' + CONFIG.postsDir + '/' + id + '-assets/' + name;
+      return '![' + alt + '](' + src + ')';
     };
     // 支持 ./<id>-assets/... 与 ./posts/<id>-assets/... 两种写法
     const re1 = new RegExp('!\\[([^\\]]*)\\]\\((\\.?/?)' + safeId + '-assets/([^)]+)\\)', 'g');
     const re2 = new RegExp('!\\[([^\\]]*)\\]\\((\\.?/?)' + CONFIG.postsDir + '/' + safeId + '-assets/([^)]+)\\)', 'g');
-    md = md.replace(re1, toRaw);
-    md = md.replace(re2, toRaw);
+    md = md.replace(re1, to);
+    md = md.replace(re2, to);
     return md;
+  }
+
+  // 同源相对路径 → CDN 直链（图片加载失败时回退用）
+  function relToRaw(src) {
+    if (!src) return '';
+    const m = String(src).match(/^\.?\/?(?:posts\/)?([^/]+)-assets\/(.+)$/);
+    if (!m) return '';
+    return RAW_BASE + CONFIG.postsDir + '/' + encodeURIComponent(m[1]) + '-assets/' + m[2];
+  }
+
+  // 正文/封面图：同源优先，失败自动回退 CDN（只回退一次）
+  function setupImageFallback(scope) {
+    (scope || document).querySelectorAll('img[src^="./posts/"], img[src^="posts/"]').forEach(img => {
+      if (img.dataset.fb) return;
+      img.dataset.fb = '1';
+      img.addEventListener('error', () => {
+        if (img.dataset.fb === '2') return;
+        const cdn = relToRaw(img.getAttribute('src'));
+        if (cdn) { img.dataset.fb = '2'; img.src = cdn; }
+      });
+    });
+  }
+
+  // 卡片封面是 background-image，没有 error 事件，用隐藏探测图判断是否需要回退
+  function setupCoverFallback(scope) {
+    (scope || document).querySelectorAll('.xhs-cover[data-src][data-fb]').forEach(el => {
+      const src = el.getAttribute('data-src');
+      const fb = el.getAttribute('data-fb');
+      if (!src || !fb) return;
+      const probe = new Image();
+      probe.onerror = () => { el.style.backgroundImage = "url('" + fb + "')"; };
+      probe.src = src;
+    });
   }
 
   // 把 jsDelivr 直链转回相对路径，保持 md 文件自包含
@@ -473,7 +512,39 @@
   }
 
   // 从 posts/ 目录加载所有文章（纯目录式，无共享文件）
+  // 构建期生成的文章清单（deploy.yml 调 scripts/build-meta.mjs 产出 posts/index.json）
+  // 1 次请求拿到全部文章，不消耗 GitHub API 的 60 次/小时匿名配额
+  async function loadManifest() {
+    const r = await fetch(CONFIG.postsDir + '/index.json?t=' + Math.floor(Date.now() / 300000), { cache: 'no-store' });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return Array.isArray(data.articles) && data.articles.length ? data.articles : null;
+  }
+
+  // 本次会话内发布/更新过、但清单里还没同步的文章（Pages 重新部署需要约 1 分钟）
+  const sessionPublished = new Map();
+
+  // 清单 + 会话内新稿合并：清单为准，会话内的更新优先，避免刚发的文章"消失"
+  function mergeSessionArticles(list) {
+    const merged = (list || []).map(a => (a && sessionPublished.has(a.id) ? sessionPublished.get(a.id) : a));
+    sessionPublished.forEach((a, id) => {
+      if (!merged.some(x => x && x.id === id)) merged.push(a);
+    });
+    merged.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    return merged;
+  }
+
   async function loadPosts() {
+    // 优先走清单（同源静态文件，无限流）；拿不到再回退到逐个列目录 + 拉 md
+    try {
+      const manifest = await loadManifest();
+      if (manifest) {
+        const articles = mergeSessionArticles(manifest);
+        try { localStorage.setItem('blog-posts-cache', JSON.stringify({ ts: Date.now(), articles })); } catch (e) {}
+        return articles;
+      }
+    } catch (e) { /* 本地未生成清单 / 离线：走原来的 API 路径 */ }
+
     const entries = await githubListDir(CONFIG.postsDir);
     const mdFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.md'));
     const articles = [];
@@ -490,7 +561,7 @@
     }
     articles.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     try { localStorage.setItem('blog-posts-cache', JSON.stringify({ ts: Date.now(), articles })); } catch (e) {}
-    return articles;
+    return mergeSessionArticles(articles);
   }
 
   // 按需取单篇（深链 / 刷新场景，内存里没有时直接拉 raw）
@@ -513,6 +584,8 @@
     await githubCommitFile(content, sha, path, (sha ? '更新文章: ' : '发布新文章: ') + article.title);
     const idx = ARTICLES.findIndex(a => a.id === article.id);
     if (idx >= 0) ARTICLES[idx] = article; else ARTICLES.unshift(article);
+    // 记进会话表：清单还没重新生成前，刷新页面也能立刻看到刚发的/刚改的
+    sessionPublished.set(article.id, article);
   }
 
   // 删除文章 —— 只 DELETE posts/<id>.md 这一个文件（彻底无共享文件冲突）
@@ -530,6 +603,7 @@
         const file = await githubGetFile(postPath(id));
         await githubDeleteFile(postPath(id), file.sha, '删除文章: ' + id);
         ARTICLES = ARTICLES.filter(a => a.id !== id);
+        sessionPublished.delete(id);
         // 同步清理本地文章缓存，避免刷新后匿名 API 限流回退到旧缓存导致文章“复活”
         try {
           const c = JSON.parse(localStorage.getItem('blog-posts-cache') || 'null');
@@ -595,9 +669,17 @@
     return base + '-' + Date.now().toString(36);
   }
 
-  // 从 markdown 生成摘要
+  // 从内容生成摘要。注意：富文本编辑器交上来的可能是 HTML 片段，
+  // 必须先转成纯文本再截断，否则卡片上会直接显示 <div class="callout">… 这种标签。
   function makeExcerpt(markdown) {
-    const text = markdown.replace(/[#*`>\[\]\(\)!_-]/g, '').replace(/\n+/g, ' ').trim();
+    let text = String(markdown || '');
+    if (/<[a-z][\s\S]*>/i.test(text)) {
+      text = text
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/<\/(p|div|h[1-6]|li|blockquote|tr)>/gi, ' ')
+        .replace(/<[^>]*>/g, '');
+    }
+    text = text.replace(/[#*`>\[\]\(\)!_-]/g, '').replace(/\s+/g, ' ').trim();
     return text.slice(0, 80) + (text.length > 80 ? '…' : '');
   }
 
@@ -706,11 +788,15 @@
 
     const cardHtml = posts.map((a, i) => {
       const grad = COVERS[a.cover] || COVERS.ocean;
-      // 封面图优先级：cover_image（已含 jsDelivr 直链转换）→ 渐变色块
-      let coverStyle, coverInner;
+      // 封面图优先级：cover_image（同源相对路径，失败回退 CDN）→ 渐变色块
+      let coverStyle, coverInner, coverAttrs = '';
       if (a.cover_image) {
-        const imgSrc = a.cover_image.indexOf('http') === 0 ? a.cover_image : RAW_BASE + (a.cover_image.replace(/^\.\//,''));
+        const raw = String(a.cover_image);
+        // 已是绝对地址（历史数据）就直接用；否则用同源相对路径 + CDN 回退
+        const imgSrc = raw.indexOf('http') === 0 ? raw : raw.replace(/^\.?\//, './');
         coverStyle = `background-image:url('${imgSrc}');background-size:cover;background-position:center;`;
+        const fb = raw.indexOf('http') === 0 ? '' : relToRaw(raw);
+        coverAttrs = fb ? ` data-src="${escapeHtml(imgSrc)}" data-fb="${escapeHtml(fb)}"` : '';
         coverInner = '';
       } else {
         coverStyle = `background:${grad};`;
@@ -718,7 +804,7 @@
       }
       return `
       <a class="xhs-card reveal" style="--d:${Math.min(i, 8) * 60}ms" href="#/post/${a.id}">
-        <div class="xhs-cover" style="${coverStyle}">
+        <div class="xhs-cover" style="${coverStyle}"${coverAttrs}>
           <span class="cover-cat">${a.category}</span>
           ${coverInner}
           <span class="cover-read">${readingTime(a.content)} 分钟</span>
@@ -773,8 +859,9 @@
       });
     }
 
-    // 卡片入场动画
+    // 卡片入场动画 + 封面图回退探测
     observeReveals();
+    setupCoverFallback();
   }
 
   // ====== 渲染：文章详情 ======
@@ -871,6 +958,7 @@
 
     // 文章页增强 + 分享卡片信息
     setupArticleEnhancers();
+    setupImageFallback();
     updateDocMeta(a.title + ' · 独白', String(a.excerpt || '').replace(/\s+/g, ' ').slice(0, 120));
   }
 
@@ -1215,7 +1303,7 @@
 
     // 把 markdown 渲染进富文本（图片转 raw 直链，编辑器内即时可预览）
     function loadToWysiwyg(md) {
-      edEl.innerHTML = enhanceHtml(marked.parse(resolveImgSrc(md || '', currentId)));
+      edEl.innerHTML = enhanceHtml(marked.parse(resolveImgSrc(md || '', currentId, true)));
     }
 
     // 初始载入
